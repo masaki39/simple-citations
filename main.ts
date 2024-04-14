@@ -1,4 +1,4 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import {App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
@@ -61,6 +61,35 @@ export default class MyPlugin extends Plugin {
 
 					// This command will only show up in Command Palette when the check function returns true
 					return true;
+				}
+			}
+		});
+
+		// This adds a simple command that can be triggered anywhere
+		this.addCommand({
+			id: 'test',
+			name: 'test command',
+			callback: async () => {
+
+				// get json and exsistiing check
+				const jsonFile = this.app.vault.getFileByPath("mylibrary.json");
+				const folder = this.app.vault.getAbstractFileByPath("Literatures");
+				if (!jsonFile || !(folder instanceof TFolder)) {
+					new Notice('Something wrong with the settings.');
+					return; 
+				}
+				
+				// parse json Data
+				const jsonContents = await this.app.vault.cachedRead(jsonFile);
+				const jsonData = JSON.parse(jsonContents);
+				console.log(jsonData);
+
+				// get elements
+				let citekeys: string[] = []
+				for (let i = 0; i < jsonData.length; i++) {
+					const citekey = jsonData[i]['citation-key'];
+					citekeys.push(citekey);
+					console.log(citekey);
 				}
 			}
 		});
