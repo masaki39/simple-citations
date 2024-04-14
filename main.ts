@@ -25,8 +25,9 @@ export default class SimpleCitations extends Plugin {
 			callback: async () => {
 
 				// get json and folder exsistiing check
-				const jsonFile = this.app.vault.getFileByPath("mylibrary.json");
-				const folder = this.app.vault.getAbstractFileByPath("Literatures");
+				const jsonFile = this.app.vault.getFileByPath(`${this.settings.jsonPath}`);
+				const folder = this.app.vault.getAbstractFileByPath(`${this.settings.folderPath}`);
+				console.log(this.settings.jsonPath,this.settings.folderPath);
 				if (!jsonFile || !(folder instanceof TFolder)) {
 					new Notice('Something wrong with the settings.');
 					return; 
@@ -45,8 +46,8 @@ export default class SimpleCitations extends Plugin {
 
 					// if nonexisting, create file
 					if (!targetFile){
-						await this.app.vault.create(`Literatures/${targetFileName}`,"");
-						targetFile = await this.app.vault.getFileByPath(`Literatures/${targetFileName}`) as TFile;
+						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
+						targetFile = await this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`) as TFile;
 					}
 					// update frontmatter
 					if (targetFile && targetFile instanceof TFile) {
@@ -63,8 +64,8 @@ export default class SimpleCitations extends Plugin {
 			callback: async () => {
 
 				// get json and folder exsistiing check
-				const jsonFile = this.app.vault.getFileByPath("mylibrary.json");
-				const folder = this.app.vault.getAbstractFileByPath("Literatures");
+				const jsonFile = this.app.vault.getFileByPath(`${this.settings.jsonPath}`);
+				const folder = this.app.vault.getAbstractFileByPath(`${this.settings.folderPath}`);
 				if (!jsonFile || !(folder instanceof TFolder)) {
 					new Notice('Something wrong with the settings.');
 					return; 
@@ -83,8 +84,8 @@ export default class SimpleCitations extends Plugin {
 
 					// if nonexisting, create file
 					if (!targetFile){
-						await this.app.vault.create(`Literatures/${targetFileName}`,"");
-						targetFile = await this.app.vault.getFileByPath(`Literatures/${targetFileName}`) as TFile;
+						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
+						targetFile = await this.app.vault.getFileByPath(`L${this.settings.folderPath}/${targetFileName}`) as TFile;
 						if (targetFile && targetFile instanceof TFile){
 							await this.updateFrontMatter(targetFile,jsonData[i]);
 						}
