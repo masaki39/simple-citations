@@ -85,7 +85,7 @@ export default class SimpleCitations extends Plugin {
 					// if nonexisting, create file
 					if (!targetFile){
 						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
-						targetFile = await this.app.vault.getFileByPath(`L${this.settings.folderPath}/${targetFileName}`) as TFile;
+						targetFile = await this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`) as TFile;
 						if (targetFile && targetFile instanceof TFile){
 							await this.updateFrontMatter(targetFile,jsonData[i]);
 						}
@@ -150,6 +150,7 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Set Json File Path')
+			.setDesc('English only')
 			.addText(text => text
 				.setPlaceholder('Enter path')
 				.setValue(this.plugin.settings.jsonPath)
