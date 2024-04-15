@@ -1,4 +1,4 @@
-import {App, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
+import {App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
 
 
 // Remember to rename these classes and interfaces!
@@ -158,7 +158,7 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
-			.setName('Set Json File Path')
+			.setName('Set json file path')
 			.setDesc('English only')
 			.addText(text => text
 				.setPlaceholder('Enter path')
@@ -168,7 +168,7 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		new Setting(containerEl)
-			.setName('Set Literature Note Folder Path')
+			.setName('Set literature note folder path')
 			.addText(text => text
 				.setPlaceholder('Enter path')
 				.setValue(this.plugin.settings.folderPath)
