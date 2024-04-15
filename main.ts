@@ -123,6 +123,9 @@ export default class SimpleCitations extends Plugin {
 	async updateFrontMatter(targetFile: TFile, item: any) {
 		await this.app.fileManager.processFrontMatter(targetFile, (fm) => {
 			fm.aliases = item['title'];
+			if (!fm.tags) {
+				fm.tags = [];
+			}
 			fm.title = item['title'];
 			if (item['author'] && Array.isArray(item['author'])) {
 				let authorsSet = new Set<string>(); 
@@ -159,9 +162,9 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Set json file path')
-			.setDesc('English only')
+			.setDesc('English Only')
 			.addText(text => text
-				.setPlaceholder('Enter path')
+				.setPlaceholder('Enter Relative Path')
 				.setValue(this.plugin.settings.jsonPath)
 				.onChange(async (value) => {
 					this.plugin.settings.jsonPath = value;
@@ -170,11 +173,13 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Set literature note folder path')
 			.addText(text => text
-				.setPlaceholder('Enter path')
+				.setPlaceholder('Enter Relative Path')
 				.setValue(this.plugin.settings.folderPath)
 				.onChange(async (value) => {
 					this.plugin.settings.folderPath = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setDesc('Set relative path. Only use English. Do not use special characters such as spaces.')
 	}
 }
