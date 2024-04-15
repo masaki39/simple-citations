@@ -55,6 +55,7 @@ export default class SimpleCitations extends Plugin {
 						
 					}
 				}
+				new Notice("Updated!!");
 			}
 		});
 
@@ -75,6 +76,7 @@ export default class SimpleCitations extends Plugin {
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
 				const files = folder.children;
+				let newFile:number = 0; // check new file num
 				
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
@@ -86,11 +88,18 @@ export default class SimpleCitations extends Plugin {
 					if (!targetFile){
 						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
 						targetFile = await this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`) as TFile;
+						newFile ++;
 						if (targetFile && targetFile instanceof TFile){
 							await this.updateFrontMatter(targetFile,jsonData[i]);
 						}
 					}
 				}
+				if (newFile == 0 ) {
+					new Notice("No additional files.");
+				} else {
+					new Notice("Completed!!");
+				}
+				
 			}
 		});
 
