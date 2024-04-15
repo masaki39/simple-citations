@@ -162,7 +162,6 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Set json file path')
-			.setDesc('English Only')
 			.addText(text => text
 				.setPlaceholder('Enter Relative Path')
 				.setValue(this.plugin.settings.jsonPath)
