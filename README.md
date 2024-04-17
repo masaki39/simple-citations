@@ -1,38 +1,26 @@
 # Simple Citations
 
-Obsidianの個人用プラグインです
-文献ノートを一括作成したり、一括更新したりできます
+This is an Obsidian plugin compatible with the [Citations plugin](https://github.com/hans/obsidian-citation-plugin). It enables the importation of literature notes from Zotero. The main feature of this plugin is **its simple usage**; it requires **minimal setup time** and allows you to **add or update literature notes in one go**.
 
-# インストール
+# Installation & Settings
 
-公開していないので、ObsidianのBRATを使用してインストールできます
+Install via [BRAT](https://github.com/TfTHacker/obsidian42-brat). Configure the path for the `Better-CSL-JSON` file and the literature notes folder in your vault.
 
-# 初期設定設定
+# Usage 
 
-Citationsプラグインとほぼ同じです
+- Use the "Add command" to import all literature notes that are not yet in the vault.
+- Use the "Update command" to only update the frontmatter as described below.
 
-1. Zoteroから出力したBetter CSL JSONのパスを指定(注：英語非対応)
-2. 文献ノートフォルダを作成して指定
+# Template
 
-# テンプレート
+Metadata for each piece of literature is appended to the frontmatter of each note. You cannot customize the template.
 
-現時点ではテンプレートはいじれません
-ファイル名は`@citekey`になり、フロントマターに下記の情報が入ります
-
-- aliases: タイトル
-- title: タイトル
-- authors: 著者(リスト)
-- journal: ジャーナル名
-- year: 出版年
-- doi: DOIリンク
-- zotero: ZoteroへのURI
-
-aliasesにタイトルが入るのでクイックスイッチャーでタイトルの検索ができます
-
-# 使い方
-
-2つしかコマンドはありません
-コマンドパレットから使用できます
-
-Add Literature Notes: Vault内にない文献ノートを一括作成
-Update Literature Notes: 上記コマンドに加え、既存のノートのフロントマターを上記テンプレートに則って上書き更新(本文やテンプレート外の項目は変更されません)
+- aliases:
+    - Title
+    - First Author. Journal. Year
+- title: Title
+- authors: List of authors
+- journal: Journal 
+- year: Publush year
+- doi: DOI link
+- zotero: Zotero URI
