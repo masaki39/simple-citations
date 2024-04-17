@@ -1,4 +1,4 @@
-import {App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder } from 'obsidian';
+import {App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normalizePath } from 'obsidian';
 
 
 // Remember to rename these classes and interfaces!
@@ -24,10 +24,14 @@ export default class SimpleCitations extends Plugin {
 			name: 'Update Literature Notes',
 			callback: async () => {
 
+				// normalize path
+				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
+				const normalizedFolderPath = normalizePath(this.settings.folderPath);
+
+
 				// get json and folder exsistiing check
-				const jsonFile = this.app.vault.getFileByPath(`${this.settings.jsonPath}`);
-				const folder = this.app.vault.getAbstractFileByPath(`${this.settings.folderPath}`);
-				console.log(this.settings.jsonPath,this.settings.folderPath);
+				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
+				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
 				if (!jsonFile || !(folder instanceof TFolder)) {
 					new Notice('Something wrong with the settings.');
 					return; 
@@ -37,6 +41,7 @@ export default class SimpleCitations extends Plugin {
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
 				const files = folder.children;
+				let fileCount: number = 0;
 				
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
@@ -44,18 +49,13 @@ export default class SimpleCitations extends Plugin {
 					const targetFileName = "@" + citekey + ".md";
 					let targetFile = files.find(file => file.name === targetFileName);
 
-					// if nonexisting, create file
-					if (!targetFile){
-						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
-						targetFile = await this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`) as TFile;
-					}
 					// update frontmatter
 					if (targetFile && targetFile instanceof TFile) {
 						await this.updateFrontMatter(targetFile,jsonData[i]);
-						
+						fileCount++;
 					}
 				}
-				new Notice("Updated!!");
+				new Notice(`${fileCount} file(s) updated.`);
 			}
 		});
 
@@ -64,9 +64,13 @@ export default class SimpleCitations extends Plugin {
 			name: 'Add Literature Notes',
 			callback: async () => {
 
+				// normalize path
+				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
+				const normalizedFolderPath = normalizePath(this.settings.folderPath);
+
 				// get json and folder exsistiing check
-				const jsonFile = this.app.vault.getFileByPath(`${this.settings.jsonPath}`);
-				const folder = this.app.vault.getAbstractFileByPath(`${this.settings.folderPath}`);
+				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
+				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
 				if (!jsonFile || !(folder instanceof TFolder)) {
 					new Notice('Something wrong with the settings.');
 					return; 
@@ -76,7 +80,8 @@ export default class SimpleCitations extends Plugin {
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
 				const files = folder.children;
-				let newFile:number = 0; // check new file num
+				let fileCount:number = 0; // check new file num
+				// console.log(jsonData);
 				
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
@@ -88,16 +93,16 @@ export default class SimpleCitations extends Plugin {
 					if (!targetFile){
 						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
 						targetFile = await this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`) as TFile;
-						newFile ++;
+						fileCount ++;
 						if (targetFile && targetFile instanceof TFile){
 							await this.updateFrontMatter(targetFile,jsonData[i]);
 						}
 					}
 				}
-				if (newFile == 0 ) {
-					new Notice("No additional files.");
+				if (fileCount == 0 ) {
+					new Notice("No additional file(s).");
 				} else {
-					new Notice("Completed!!");
+					new Notice(`${fileCount} file(s) added.`);
 				}
 				
 			}
