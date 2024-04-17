@@ -92,7 +92,7 @@ export default class SimpleCitations extends Plugin {
 					// if nonexisting, create file
 					if (!targetFile){
 						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
-						targetFile = await this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`) as TFile;
+						targetFile = this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`) as TFile;
 						fileCount ++;
 						if (targetFile && targetFile instanceof TFile){
 							await this.updateFrontMatter(targetFile,jsonData[i]);
@@ -127,7 +127,7 @@ export default class SimpleCitations extends Plugin {
 
 	async updateFrontMatter(targetFile: TFile, item: any) {
 		await this.app.fileManager.processFrontMatter(targetFile, (fm) => {
-			fm.aliases = item['title'];
+			fm.aliases = [item['title']];
 			if (!fm.tags) {
 				fm.tags = [];
 			}
@@ -147,6 +147,9 @@ export default class SimpleCitations extends Plugin {
 			fm.journal = item['container-title'];
 			fm.doi = "https://doi.org/" + item['DOI'];
 			fm.zotero = "zotero://select/items/@" + item['id'];
+			if (fm.authors && fm.authors.length > 0 && fm.journal && fm.year) {
+				fm.aliases.push(`${fm.authors[0]}. ${fm.journal}. ${fm.year}`);
+			}
 		});
 	}
 
@@ -167,7 +170,6 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Set json file path')
-			.setDesc('English Only')
 			.addText(text => text
 				.setPlaceholder('Enter Relative Path')
 				.setValue(this.plugin.settings.jsonPath)
