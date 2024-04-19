@@ -47,7 +47,7 @@ export default class SimpleCitations extends Plugin {
 				for (let i = 0; i < jsonData.length; i++) {
 					const citekey = jsonData[i]['citation-key'];
 					const targetFileName = "@" + citekey + ".md";
-					let targetFile = files.find(file => file.name === targetFileName);
+					const targetFile = files.find(file => file.name === targetFileName);
 
 					// update frontmatter
 					if (targetFile && targetFile instanceof TFile) {
@@ -87,15 +87,15 @@ export default class SimpleCitations extends Plugin {
 				for (let i = 0; i < jsonData.length; i++) {
 					const citekey = jsonData[i]['citation-key'];
 					const targetFileName = "@" + citekey + ".md";
-					let targetFile = files.find(file => file.name === targetFileName);
+					const targetFile = files.find(file => file.name === targetFileName);
 
 					// if nonexisting, create file
 					if (!targetFile){
 						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
-						targetFile = this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`) as TFile;
+						 const newFile = this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`);
 						fileCount ++;
-						if (targetFile && targetFile instanceof TFile){
-							await this.updateFrontMatter(targetFile,jsonData[i]);
+						if (newFile){
+							await this.updateFrontMatter(newFile,jsonData[i]);
 						}
 					}
 				}
