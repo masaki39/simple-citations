@@ -1,8 +1,5 @@
 import {App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normalizePath } from 'obsidian';
 
-
-// Remember to rename these classes and interfaces!
-
 interface SimpleCitationsSettings {
 	jsonPath: string;
 	folderPath: string;
@@ -21,7 +18,7 @@ export default class SimpleCitations extends Plugin {
 
 		this.addCommand({
 			id: 'update-citations',
-			name: 'Update Literature Notes',
+			name: 'Update literature notes',
 			callback: async () => {
 
 				// normalize path
@@ -61,7 +58,7 @@ export default class SimpleCitations extends Plugin {
 
 		this.addCommand({
 			id: 'add-citations',
-			name: 'Add Literature Notes',
+			name: 'Add literature notes',
 			callback: async () => {
 
 				// normalize path

@@ -1,9 +1,9 @@
 {
 	"id": "simple-citations",
 	"name": "Simple Citations",
-	"version": "1.0.8",
+	"version": "1.0.9",
 	"minAppVersion": "1.5.12",
-	"description": "Add & update simple literature notes.",
+	"description": "Add & update simple literature notes from Zotero.",
 	"author": "masaki39",
 	"authorUrl": "https://github.com/masaki39",
 	"isDesktopOnly": true
