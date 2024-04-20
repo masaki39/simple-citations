@@ -88,12 +88,9 @@ export default class SimpleCitations extends Plugin {
 
 					// if nonexisting, create file
 					if (!targetFile){
-						await this.app.vault.create(`${this.settings.folderPath}/${targetFileName}`,"");
-						 const newFile = this.app.vault.getFileByPath(`${this.settings.folderPath}/${targetFileName}`);
+						const newFile = await this.app.vault.create(`${normalizedFolderPath}/${targetFileName}`,"");
+						await this.updateFrontMatter(newFile,jsonData[i]);
 						fileCount ++;
-						if (newFile){
-							await this.updateFrontMatter(newFile,jsonData[i]);
-						}
 					}
 				}
 				if (fileCount == 0 ) {
