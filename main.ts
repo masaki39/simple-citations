@@ -6,8 +6,8 @@ interface SimpleCitationsSettings {
 }
 
 const DEFAULT_SETTINGS: SimpleCitationsSettings = {
-	jsonPath: 'MyLibrary.json',
-	folderPath: "Literatures",
+	jsonPath: "",
+	folderPath: "",
 }
 
 export default class SimpleCitations extends Plugin {
@@ -24,7 +24,6 @@ export default class SimpleCitations extends Plugin {
 				// normalize path
 				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
 				const normalizedFolderPath = normalizePath(this.settings.folderPath);
-
 
 				// get json and folder exsistiing check
 				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
@@ -180,7 +179,5 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.folderPath = value;
 					await this.plugin.saveSettings();
 				}));
-		new Setting(containerEl)
-			.setDesc('Set relative path. Only use English. Do not use special characters such as spaces.')
 	}
 }
