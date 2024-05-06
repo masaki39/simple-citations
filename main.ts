@@ -101,6 +101,47 @@ export default class SimpleCitations extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'execute-pandoc',
+			name: 'Modified export (docx)',
+			callback: async () => {
+				// get file
+				const activeFile = this.app.workspace.getActiveFile();
+				if (!activeFile) {
+					new Notice('No active file.');
+				return;
+				}
+				const content = await this.app.vault.read(activeFile);
+
+				// check if the command exists
+				const commandId = "obsidian-pandoc:pandoc-export-docx";
+				const commands = (this.app as any).commands;
+				const commandExist = commands.listCommands().some((cmd: any) => cmd.id === commandId);
+				if (!commandExist){
+					new Notice("Install Pandoc Plugin");
+				return;
+				}
+
+				// replace
+				let newContent = await content.replace(/\[\[(.*?)\|.*?\]\]/g, "[[$1]]"); // fix aliases 
+				newContent = newContent.replace(/\[\[@(.*?)\]\]/g, "[@$1]"); // convert to pandoc style
+				newContent = newContent.replace(/\](\s*?)\[@/g, ";@"); // connect citations
+
+				// modify file
+				await this.app.vault.modify(activeFile, newContent);
+
+				// execute
+				await commands.executeCommandById(commandId);
+				new Notice ("Wait for 5 seconds.");
+
+				// Delay for a specific time (5 seconds)
+				await new Promise(resolve => setTimeout(resolve, 5000));
+
+				// return
+				await this.app.vault.modify(activeFile, content);
+			}
+		});
+
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SimpleCitationsSettingTab(this.app, this));
 		

@@ -10,6 +10,15 @@ Install via [BRAT](https://github.com/TfTHacker/obsidian42-brat). Configure the 
 
 - Use the "Add command" to import all literature notes that are not yet in the vault.
 - Use the "Update command" to only update the frontmatter as described below.
+- The "Modified export (docx)" command executes the "Export as Word Document (docx)" command from the [Pandoc Plugin](https://github.com/OliverBalfour/obsidian-pandoc).
+    - Before execution, it converts links to literature notes into Pandoc's format and **retains them for only five seconds**.
+ 
+```
+[[@citation-key]] → [@citation-key]
+[[@citation-key|description]] → [@citation-key] // aliases OK
+[[@citation-key]][[@citation-key]] → [@citation-key;@citation-key] // multiple citations OK
+[[@citation-key]]   [[@citation-key]] → [@citation-key;@citation-key] // You can insert spaces or line breaks between  the links.
+```
 
 # Template
 
