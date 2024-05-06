@@ -18,6 +18,7 @@ Install via [BRAT](https://github.com/TfTHacker/obsidian42-brat). Configure the 
 [[@citation-key|description]] → [@citation-key] // aliases OK
 [[@citation-key]][[@citation-key]] → [@citation-key;@citation-key] // multiple citations OK
 [[@citation-key]]   [[@citation-key]] → [@citation-key;@citation-key] // You can insert spaces or line breaks between  the links.
+end of a sentence.  [[@citation-key]] → end of a sentence[@citation-key]. // Insert links before `.` if there are nothing between them.
 ```
 
 # Template
