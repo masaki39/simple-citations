@@ -162,7 +162,7 @@ export default class SimpleCitations extends Plugin {
 
 	async updateFrontMatter(targetFile: TFile, item: any) {
 		await this.app.fileManager.processFrontMatter(targetFile, (fm) => {
-			fm.aliases = [item['title']];
+			fm.aliases = [];
 			if (!fm.tags) {
 				fm.tags = [];
 			}
@@ -185,6 +185,7 @@ export default class SimpleCitations extends Plugin {
 			if (fm.authors && fm.authors.length > 0 && fm.journal && fm.year) {
 				fm.aliases.push(`${fm.authors[0]}. ${fm.journal}. ${fm.year}`);
 			}
+			fm.aliases.push(item['title']);
 		});
 	}
 
