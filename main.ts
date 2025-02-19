@@ -3,11 +3,15 @@ import {App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normaliz
 interface SimpleCitationsSettings {
 	jsonPath: string;
 	folderPath: string;
+	includeAuthorTag: boolean;
+	includeJournalTag: boolean;
 }
 
 const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	jsonPath: "",
 	folderPath: "",
+	includeAuthorTag: false,
+	includeJournalTag: false,
 }
 
 export default class SimpleCitations extends Plugin {
@@ -20,19 +24,18 @@ export default class SimpleCitations extends Plugin {
 			id: 'update-citations',
 			name: 'Update literature notes',
 			callback: async () => {
-
 				// normalize path
 				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
 				const normalizedFolderPath = normalizePath(this.settings.folderPath);
 
-				// get json and folder exsistiing check
+				// get json and folder existing check
 				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
 				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
 				if (!jsonFile || !(folder instanceof TFolder)) {
 					new Notice('Something wrong with the settings.');
 					return; 
 				}
-				
+
 				// parse json Data and files
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
@@ -163,9 +166,9 @@ export default class SimpleCitations extends Plugin {
 	async updateFrontMatter(targetFile: TFile, item: any) {
 		await this.app.fileManager.processFrontMatter(targetFile, (fm) => {
 			fm.aliases = [];
-			if (!fm.tags) {
-				fm.tags = [];
-			}
+			if (!Array.isArray(fm.tags)) { // check if tags is an array
+				fm.tags = fm.tags ? [fm.tags] : [];
+			}			
 			fm.title = item['title'];
 			if (item['author'] && Array.isArray(item['author'])) {
 				let authorsSet = new Set<string>(); 
@@ -180,12 +183,48 @@ export default class SimpleCitations extends Plugin {
 				fm.year = Number(item['issued']['date-parts'][0][0]);
 			}
 			fm.journal = item['container-title'];
-			fm.doi = "https://doi.org/" + item['DOI'];
+			fm.doi = item['DOI'] ? `https://doi.org/${item['DOI']}` : "";
 			fm.zotero = "zotero://select/items/@" + item['id'];
 			if (fm.authors && fm.authors.length > 0 && fm.journal && fm.year) {
 				fm.aliases.push(`${fm.authors[0]}. ${fm.journal}. ${fm.year}`);
 			}
 			fm.aliases.push(item['title']);
+			// add or remove author tag
+			if (fm.authors && fm.authors.length > 0) {
+				let authorTag = fm.authors[0]
+					.replace(/[&:;,'"\\?!<>|()\[\]{}\.\s]/g, '_') // スペース & 記号をすべてアンダースコアに
+					.replace(/_+/g, '_')  // 連続するアンダースコアを1つに圧縮
+					.replace(/^_+|_+$/g, ''); // 先頭・末尾のアンダースコアを削除
+				authorTag = `author/${authorTag}`;
+				if (this.settings.includeAuthorTag) {
+					if (!fm.tags.includes(authorTag)) {
+						fm.tags.push(authorTag);
+					}
+				} else {
+					const index = fm.tags.indexOf(authorTag);
+					if (index > -1) {
+						fm.tags.splice(index, 1);
+					}
+				}
+			}
+			// add or remove journal tag
+			if (fm.journal) {
+				let journalTag = fm.journal
+					.replace(/[&:;,'"\\?!<>|()\[\]{}\.\s]/g, '_') // スペース & 記号をすべてアンダースコアに
+					.replace(/_+/g, '_')  // 連続するアンダースコアを1つに圧縮
+					.replace(/^_+|_+$/g, ''); // 先頭・末尾のアンダースコアを削除
+				journalTag = `journal/${journalTag}`;
+				if (this.settings.includeJournalTag) {
+					if (!fm.tags.includes(journalTag)) {
+						fm.tags.push(journalTag);
+					}
+				} else {
+					const index = fm.tags.indexOf(journalTag);
+					if (index > -1) {
+						fm.tags.splice(index, 1);
+					}
+				}
+			}
 		});
 	}
 
@@ -220,6 +259,24 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.folderPath)
 				.onChange(async (value) => {
 					this.plugin.settings.folderPath = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Include Author Tag')
+			.setDesc('When enabled, adds a tag with the first author\'s name.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.includeAuthorTag)
+				.onChange(async (value) => {
+					this.plugin.settings.includeAuthorTag = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Include Journal Tag')
+			.setDesc('When enabled, adds a tag with the journal name.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.includeJournalTag)
+				.onChange(async (value) => {
+					this.plugin.settings.includeJournalTag = value;
 					await this.plugin.saveSettings();
 				}));
 	}
