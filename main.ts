@@ -51,7 +51,8 @@ export default class SimpleCitations extends Plugin {
 				
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
-					const citekey = jsonData[i]['citation-key'];
+					const citekey = jsonData[i]?.['citation-key'];
+					if (!citekey) continue; // `citation-key` がないデータはスキップ
 					const targetFileName = "@" + citekey + ".md";
 					const targetFile = files.get(targetFileName); // O(1) の高速検索
 
@@ -96,7 +97,8 @@ export default class SimpleCitations extends Plugin {
 				
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
-					const citekey = jsonData[i]['citation-key'];
+					const citekey = jsonData[i]?.['citation-key'];
+					if (!citekey) continue; // `citation-key` がないデータはスキップ
 					const targetFileName = "@" + citekey + ".md";
 					const targetFile = files.get(targetFileName); // O(1) の高速検索
 
@@ -244,6 +246,9 @@ export default class SimpleCitations extends Plugin {
 			const parts = content.split("<!-- START_TEMPLATE -->", 2);
 			if (parts.length > 1) {
 				const afterTag = parts[1].split("<!-- END_TEMPLATE -->", 2);
+				if (afterTag.length < 2) {
+					return content;
+				}
 				return template
 					? `${parts[0]}<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->${afterTag.length > 1 ? afterTag[1] : ""}`
 					: `${parts[0]}${afterTag.length > 1 ? afterTag[1] : ""}`;
@@ -264,11 +269,13 @@ export default class SimpleCitations extends Plugin {
 			const parts = content.split("<!-- START_ABSTRACT -->", 2);
 			if (parts.length > 1) {
 				const afterTag = parts[1].split("<!-- END_ABSTRACT -->", 2);
+				if (afterTag.length < 2) {
+					return content;
+				}
 				return abstract
 					? `${parts[0]}<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->${afterTag.length > 1 ? afterTag[1] : ""}`
 					: `${parts[0]}${afterTag.length > 1 ? afterTag[1] : ""}`;
 			}
-	
 			return abstract ? content + `\n\n<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->` : content;
 		});
 	}
