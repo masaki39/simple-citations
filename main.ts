@@ -45,28 +45,21 @@ export default class SimpleCitations extends Plugin {
 				// parse json Data and files
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
-				const files = folder.children;
-				let templateContent = "";
-				if (templateFile) {
-					templateContent = await this.app.vault.cachedRead(templateFile);
-				}
+				const files = new Map(folder.children.map(file => [file.name, file])); // マップ化
+				let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 				let fileCount: number = 0;
 				
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
 					const citekey = jsonData[i]['citation-key'];
 					const targetFileName = "@" + citekey + ".md";
-					const targetFile = files.find(file => file.name === targetFileName);
+					const targetFile = files.get(targetFileName); // O(1) の高速検索
 
 					// update frontmatter
 					if (targetFile && targetFile instanceof TFile) {
 						await this.updateFrontMatter(targetFile,jsonData[i]);
 						await this.applyTemplate(targetFile, templateContent);
-						if (this.settings.includeAbstract) {
-							await this.applyAbstract(targetFile, jsonData[i]['abstract']);
-						} else {
-							await this.applyAbstract(targetFile, "");
-						}
+						await this.applyAbstract(targetFile, this.settings.includeAbstract ? jsonData[i]['abstract'] : "");
 						fileCount++;
 					}
 				}
@@ -88,7 +81,7 @@ export default class SimpleCitations extends Plugin {
 				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
 				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
 				const templateFile = this.app.vault.getFileByPath(`${normalizedTemplatePath}`);
-				if (!jsonFile || !(folder instanceof TFolder) || !templateFile) {
+				if (!jsonFile || !(folder instanceof TFolder)) {
 					new Notice('Something wrong with the settings.');
 					return; 
 				}
@@ -96,19 +89,16 @@ export default class SimpleCitations extends Plugin {
 				// parse json Data and files
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
-				const files = folder.children;
-				let templateContent = "";
-				if (templateFile) {
-					templateContent = await this.app.vault.cachedRead(templateFile);
-				}
-				let fileCount:number = 0; // check new file num
+				const files = new Map(folder.children.map(file => [file.name, file])); // マップ化
+				let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
+				let fileCount: number = 0;
 				// console.log(jsonData);
 				
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
 					const citekey = jsonData[i]['citation-key'];
 					const targetFileName = "@" + citekey + ".md";
-					const targetFile = files.find(file => file.name === targetFileName);
+					const targetFile = files.get(targetFileName); // O(1) の高速検索
 
 					// if nonexisting, create file
 					if (!targetFile){
@@ -123,12 +113,7 @@ export default class SimpleCitations extends Plugin {
 						fileCount ++;
 					}
 				}
-				if (fileCount == 0 ) {
-					new Notice("No additional file(s).");
-				} else {
-					new Notice(`${fileCount} file(s) added.`);
-				}
-				
+				new Notice(fileCount ? `${fileCount} file(s) added.` : "No additional file(s).");
 			}
 		});
 
@@ -199,13 +184,11 @@ export default class SimpleCitations extends Plugin {
 			}			
 			fm.title = item['title'];
 			if (item['author'] && Array.isArray(item['author'])) {
-				let authorsSet = new Set<string>(); 
-				item['author'].forEach((author: { given?: string; family?: string; literal?: string }) => {
-					let authorName = author.literal || `${author.given} ${author.family}`;
-					authorsSet.add(authorName.trim());
-				});
-				let authorsList = Array.from(authorsSet);
-				fm.authors = authorsList;
+				fm.authors = Array.from(new Set(
+					item['author'].map(author =>
+						(author.literal || `${author.given ?? ""} ${author.family ?? ""}`).trim()
+					)
+				));				
 			}
 			if (item['issued'] && Array.isArray(item['issued']['date-parts']) && item['issued']['date-parts'][0] && !isNaN(item['issued']['date-parts'][0][0])) {
 				fm.year = Number(item['issued']['date-parts'][0][0]);
@@ -273,9 +256,11 @@ export default class SimpleCitations extends Plugin {
 	async applyAbstract(targetFile: TFile, abstract: string) {
 		await this.app.vault.process(targetFile, (content: string) => {
 			if (abstract) {
-				abstract = abstract.replace(/[ \t]+/g, " "); // スペース・タブを1つに統一
+				abstract = abstract
+				.replace(/[ \t]+/g, " ") // 連続するスペース・タブを1つに統一
+				.replace(/\n+/g, "\n") // 連続する改行を1つに統一
+				.trim(); // 先頭・末尾の不要な空白を削除
 			}
-	
 			const parts = content.split("<!-- START_ABSTRACT -->", 2);
 			if (parts.length > 1) {
 				const afterTag = parts[1].split("<!-- END_ABSTRACT -->", 2);
