@@ -246,37 +246,27 @@ export default class SimpleCitations extends Plugin {
 			const parts = content.split("<!-- START_TEMPLATE -->", 2);
 			if (parts.length > 1) {
 				const afterTag = parts[1].split("<!-- END_TEMPLATE -->", 2);
-				if (afterTag.length < 2) {
-					return content;
-				}
 				return template
 					? `${parts[0]}<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->${afterTag.length > 1 ? afterTag[1] : ""}`
 					: `${parts[0]}${afterTag.length > 1 ? afterTag[1] : ""}`;
 			}
-			return template ? content + `\n\n<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->` : content;
+			return template ? `${content.trimEnd()}\n\n<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->` : content;
 		});
 	}
 	
-
 	async applyAbstract(targetFile: TFile, abstract: string) {
 		await this.app.vault.process(targetFile, (content: string) => {
 			if (abstract) {
-				abstract = abstract
-				.replace(/[ \t]+/g, " ") // 連続するスペース・タブを1つに統一
-				.replace(/\n+/g, "\n") // 連続する改行を1つに統一
-				.trim(); // 先頭・末尾の不要な空白を削除
+				abstract = abstract.replace(/\s+/g, " ").trim();
 			}
 			const parts = content.split("<!-- START_ABSTRACT -->", 2);
 			if (parts.length > 1) {
 				const afterTag = parts[1].split("<!-- END_ABSTRACT -->", 2);
-				if (afterTag.length < 2) {
-					return content;
-				}
 				return abstract
 					? `${parts[0]}<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->${afterTag.length > 1 ? afterTag[1] : ""}`
 					: `${parts[0]}${afterTag.length > 1 ? afterTag[1] : ""}`;
 			}
-			return abstract ? content + `\n\n<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->` : content;
+			return abstract ? `${content.trimEnd()}\n\n<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->` : content;
 		});
 	}
 
