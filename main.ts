@@ -5,6 +5,8 @@ interface SimpleCitationsSettings {
 	folderPath: string;
 	includeAuthorTag: boolean;
 	includeJournalTag: boolean;
+	includeAbstract: boolean;
+	templatePath: string;
 }
 
 const DEFAULT_SETTINGS: SimpleCitationsSettings = {
@@ -12,6 +14,8 @@ const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	folderPath: "",
 	includeAuthorTag: false,
 	includeJournalTag: false,
+	includeAbstract: false,
+	templatePath: "",
 }
 
 export default class SimpleCitations extends Plugin {
@@ -27,10 +31,12 @@ export default class SimpleCitations extends Plugin {
 				// normalize path
 				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
 				const normalizedFolderPath = normalizePath(this.settings.folderPath);
+				const normalizedTemplatePath = normalizePath(this.settings.templatePath + ".md");
 
 				// get json and folder existing check
 				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
 				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
+				const templateFile = this.app.vault.getFileByPath(`${normalizedTemplatePath}`);
 				if (!jsonFile || !(folder instanceof TFolder)) {
 					new Notice('Something wrong with the settings.');
 					return; 
@@ -40,6 +46,10 @@ export default class SimpleCitations extends Plugin {
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
 				const files = folder.children;
+				let templateContent = "";
+				if (templateFile) {
+					templateContent = await this.app.vault.cachedRead(templateFile);
+				}
 				let fileCount: number = 0;
 				
 				// check json file
@@ -51,6 +61,12 @@ export default class SimpleCitations extends Plugin {
 					// update frontmatter
 					if (targetFile && targetFile instanceof TFile) {
 						await this.updateFrontMatter(targetFile,jsonData[i]);
+						await this.applyTemplate(targetFile, templateContent);
+						if (this.settings.includeAbstract) {
+							await this.applyAbstract(targetFile, jsonData[i]['abstract']);
+						} else {
+							await this.applyAbstract(targetFile, "");
+						}
 						fileCount++;
 					}
 				}
@@ -66,11 +82,13 @@ export default class SimpleCitations extends Plugin {
 				// normalize path
 				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
 				const normalizedFolderPath = normalizePath(this.settings.folderPath);
+				const normalizedTemplatePath = normalizePath(this.settings.templatePath + ".md");
 
 				// get json and folder exsistiing check
 				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
 				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
-				if (!jsonFile || !(folder instanceof TFolder)) {
+				const templateFile = this.app.vault.getFileByPath(`${normalizedTemplatePath}`);
+				if (!jsonFile || !(folder instanceof TFolder) || !templateFile) {
 					new Notice('Something wrong with the settings.');
 					return; 
 				}
@@ -79,6 +97,10 @@ export default class SimpleCitations extends Plugin {
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
 				const files = folder.children;
+				let templateContent = "";
+				if (templateFile) {
+					templateContent = await this.app.vault.cachedRead(templateFile);
+				}
 				let fileCount:number = 0; // check new file num
 				// console.log(jsonData);
 				
@@ -92,6 +114,12 @@ export default class SimpleCitations extends Plugin {
 					if (!targetFile){
 						const newFile = await this.app.vault.create(`${normalizedFolderPath}/${targetFileName}`,"");
 						await this.updateFrontMatter(newFile,jsonData[i]);
+						await this.applyTemplate(newFile, templateContent);
+						if (this.settings.includeAbstract) {
+							await this.applyAbstract(newFile, jsonData[i]['abstract']);
+						} else {
+							await this.applyAbstract(newFile, "");
+						}
 						fileCount ++;
 					}
 				}
@@ -228,6 +256,38 @@ export default class SimpleCitations extends Plugin {
 		});
 	}
 
+	async applyTemplate(targetFile: TFile, template: string) {
+		await this.app.vault.process(targetFile, (content: string) => {
+			const parts = content.split("<!-- START_TEMPLATE -->", 2);
+			if (parts.length > 1) {
+				const afterTag = parts[1].split("<!-- END_TEMPLATE -->", 2);
+				return template
+					? `${parts[0]}<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->${afterTag.length > 1 ? afterTag[1] : ""}`
+					: `${parts[0]}${afterTag.length > 1 ? afterTag[1] : ""}`;
+			}
+			return template ? content + `\n\n<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->` : content;
+		});
+	}
+	
+
+	async applyAbstract(targetFile: TFile, abstract: string) {
+		await this.app.vault.process(targetFile, (content: string) => {
+			if (abstract) {
+				abstract = abstract.replace(/[ \t]+/g, " "); // スペース・タブを1つに統一
+			}
+	
+			const parts = content.split("<!-- START_ABSTRACT -->", 2);
+			if (parts.length > 1) {
+				const afterTag = parts[1].split("<!-- END_ABSTRACT -->", 2);
+				return abstract
+					? `${parts[0]}<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->${afterTag.length > 1 ? afterTag[1] : ""}`
+					: `${parts[0]}${afterTag.length > 1 ? afterTag[1] : ""}`;
+			}
+	
+			return abstract ? content + `\n\n<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->` : content;
+		});
+	}
+
 }
 
 class SimpleCitationsSettingTab extends PluginSettingTab {
@@ -262,7 +322,7 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		new Setting(containerEl)
-			.setName('Include Author Tag')
+			.setName('Include author tag')
 			.setDesc('When enabled, adds a tag with the first author\'s name.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.includeAuthorTag)
@@ -271,12 +331,31 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		new Setting(containerEl)
-			.setName('Include Journal Tag')
+			.setName('Include journal tag')
 			.setDesc('When enabled, adds a tag with the journal name.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.includeJournalTag)
 				.onChange(async (value) => {
 					this.plugin.settings.includeJournalTag = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Include abstract to content')
+			.setDesc('When enabled, adds the abstract to the content.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.includeAbstract)
+				.onChange(async (value) => {
+					this.plugin.settings.includeAbstract = value;
+					await this.plugin.saveSettings();
+				}));
+
+		new Setting(containerEl)
+			.setName('Set template file path')
+			.addText(text => text
+				.setPlaceholder('Enter Relative Path')
+				.setValue(this.plugin.settings.templatePath)
+				.onChange(async (value) => {
+					this.plugin.settings.templatePath = value;
 					await this.plugin.saveSettings();
 				}));
 	}
