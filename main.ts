@@ -243,14 +243,23 @@ export default class SimpleCitations extends Plugin {
 
 	async applyTemplate(targetFile: TFile, template: string) {
 		await this.app.vault.process(targetFile, (content: string) => {
-			const parts = content.split("<!-- START_TEMPLATE -->", 2);
-			if (parts.length > 1) {
-				const afterTag = parts[1].split("<!-- END_TEMPLATE -->", 2);
-				return template
-					? `${parts[0]}<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->${afterTag.length > 1 ? afterTag[1] : ""}`
-					: `${parts[0]}${afterTag.length > 1 ? afterTag[1] : ""}`;
+			let startIndex = content.indexOf("<!-- START_TEMPLATE -->");
+			let endIndex = content.indexOf("<!-- END_TEMPLATE -->");
+			// `END_TEMPLATE` だけがある場合、削除する
+			if (startIndex === -1 && endIndex !== -1) {
+				content = content.slice(0, endIndex) + content.slice(endIndex + "<!-- END_TEMPLATE -->".length);
+				endIndex = -1; // 削除後、リセット
 			}
-			return template ? `${content.trimEnd()}\n\n<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->` : content;
+			if (startIndex !== -1) {
+				let beforeTag = content.slice(0, startIndex);
+				let afterTag = endIndex !== -1 ? content.slice(endIndex + "<!-- END_TEMPLATE -->".length) : "";
+				return template
+					? `${beforeTag}<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->${afterTag}`
+					: `${beforeTag}${afterTag}`;
+			}
+			return template
+				? `${content.trimEnd()}\n\n<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->`
+				: content;
 		});
 	}
 	
@@ -259,17 +268,27 @@ export default class SimpleCitations extends Plugin {
 			if (abstract) {
 				abstract = abstract.replace(/\s+/g, " ").trim();
 			}
-			const parts = content.split("<!-- START_ABSTRACT -->", 2);
-			if (parts.length > 1) {
-				const afterTag = parts[1].split("<!-- END_ABSTRACT -->", 2);
-				return abstract
-					? `${parts[0]}<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->${afterTag.length > 1 ? afterTag[1] : ""}`
-					: `${parts[0]}${afterTag.length > 1 ? afterTag[1] : ""}`;
+			let startIndex = content.indexOf("<!-- START_ABSTRACT -->");
+			let endIndex = content.indexOf("<!-- END_ABSTRACT -->");
+			// `END_ABSTRACT` だけがある場合、削除する
+			if (startIndex === -1 && endIndex !== -1) {
+				content = content.slice(0, endIndex) + content.slice(endIndex + "<!-- END_ABSTRACT -->".length);
+				endIndex = -1; // 削除後、リセット
 			}
-			return abstract ? `${content.trimEnd()}\n\n<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->` : content;
+			if (startIndex !== -1) {
+				let beforeTag = content.slice(0, startIndex);
+				let afterTag = endIndex !== -1 ? content.slice(endIndex + "<!-- END_ABSTRACT -->".length) : "";
+	
+				return abstract
+					? `${beforeTag}<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->${afterTag}`
+					: `${beforeTag}${afterTag}`;
+			}
+			return abstract
+				? `${content.trimEnd()}\n\n<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->`
+				: content;
 		});
 	}
-
+	
 }
 
 class SimpleCitationsSettingTab extends PluginSettingTab {
