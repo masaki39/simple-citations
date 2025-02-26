@@ -79,7 +79,7 @@ export default class SimpleCitations extends Plugin {
 				// hide notice after 5 seconds
 				setTimeout(() => {
 					notice.hide();
-				}, 5000);
+				}, 3000);
 			}
 		});
 
@@ -142,7 +142,7 @@ export default class SimpleCitations extends Plugin {
 				// hide notice after 5 seconds
 				setTimeout(() => {
 					notice.hide();
-				}, 5000);
+				}, 3000);
 			}
 		});
 
@@ -185,6 +185,40 @@ export default class SimpleCitations extends Plugin {
 
 				// return
 				await this.app.vault.modify(activeFile, content);
+			}
+		});
+
+		this.addCommand({
+			id: 'copy-missing-note-links',
+			name: 'Copy missing note links not included in json file',
+			callback: async () => {
+				// normalize path
+				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
+				const normalizedFolderPath = normalizePath(this.settings.folderPath);
+				// get json and folder exsistiing check
+				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
+				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
+				if (!jsonFile || !(folder instanceof TFolder)) {
+					new Notice('Something wrong with the settings.');
+					return;
+				}
+				// parse json Data and file names
+				const jsonContents = await this.app.vault.cachedRead(jsonFile);
+				const jsonData = JSON.parse(jsonContents);
+				const files = folder.children.filter(file => file instanceof TFile);
+				const fileNames = files.map(file => file.name.replace(/\.md$/, ""));
+				// get citation keys
+				const citationKeys = new Set(jsonData.map((entry: { [x: string]: any; }) => entry["citation-key"]));
+				// get missing files
+				const missingFiles = fileNames.filter(fileName => !citationKeys.has(fileName.slice(1)));
+				if (missingFiles.length === 0) {
+					new Notice("No missing notes found.");
+					return;
+				}		
+				// copy missing links
+				const missingLinks = missingFiles.map(fileName => `[[${fileName}]]`).join("\n");
+				await navigator.clipboard.writeText(missingLinks);
+				new Notice("Copied missing note links to clipboard!");
 			}
 		});
 
