@@ -28,6 +28,7 @@ export default class SimpleCitations extends Plugin {
 			id: 'update-citations',
 			name: 'Update literature notes',
 			callback: async () => {
+				const startTime = performance.now(); // start time
 				// normalize path
 				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
 				const normalizedFolderPath = normalizePath(this.settings.folderPath);
@@ -48,7 +49,13 @@ export default class SimpleCitations extends Plugin {
 				const files = new Map(folder.children.map(file => [file.name, file])); // マップ化
 				let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 				let fileCount: number = 0;
-				
+
+				// progress notice
+				let notice = new Notice(`0 file(s) updated.`, 0);
+				const intervalId = setInterval(() => {
+					notice.setMessage(`${fileCount} file(s) updated.`);
+				}, 200);
+
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
 					const citekey = jsonData[i]?.['citation-key'];
@@ -64,7 +71,15 @@ export default class SimpleCitations extends Plugin {
 						fileCount++;
 					}
 				}
-				new Notice(`${fileCount} file(s) updated.`);
+				// stop timer
+				clearInterval(intervalId);
+				const endTime = performance.now(); // end time
+				const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
+				notice.setMessage(`${fileCount} file(s) updated.\nTime taken: ${elapsedTime} seconds`);
+				// hide notice after 5 seconds
+				setTimeout(() => {
+					notice.hide();
+				}, 5000);
 			}
 		});
 
@@ -72,7 +87,7 @@ export default class SimpleCitations extends Plugin {
 			id: 'add-citations',
 			name: 'Add literature notes',
 			callback: async () => {
-
+				const startTime = performance.now(); // start time
 				// normalize path
 				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
 				const normalizedFolderPath = normalizePath(this.settings.folderPath);
@@ -93,7 +108,11 @@ export default class SimpleCitations extends Plugin {
 				const files = new Map(folder.children.map(file => [file.name, file])); // マップ化
 				let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 				let fileCount: number = 0;
-				// console.log(jsonData);
+				
+				let notice = new Notice(`0 file(s) added.`, 0);
+				const intervalId = setInterval(() => {
+					notice.setMessage(`${fileCount} file(s) added.`);
+				}, 200);
 				
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
@@ -115,7 +134,15 @@ export default class SimpleCitations extends Plugin {
 						fileCount ++;
 					}
 				}
-				new Notice(fileCount ? `${fileCount} file(s) added.` : "No additional file(s).");
+				// stop timer
+				clearInterval(intervalId);
+				const endTime = performance.now(); // end time
+				const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
+				notice.setMessage(`${fileCount} file(s) added.\nTime taken: ${elapsedTime} seconds`);
+				// hide notice after 5 seconds
+				setTimeout(() => {
+					notice.hide();
+				}, 5000);
 			}
 		});
 
@@ -243,22 +270,24 @@ export default class SimpleCitations extends Plugin {
 
 	async applyTemplate(targetFile: TFile, template: string) {
 		await this.app.vault.process(targetFile, (content: string) => {
-			let startIndex = content.indexOf("<!-- START_TEMPLATE -->");
-			let endIndex = content.indexOf("<!-- END_TEMPLATE -->");
+			const startTag = "<!-- START_TEMPLATE -->";
+			const endTag = "<!-- END_TEMPLATE -->";
+			let startIndex = content.indexOf(startTag);
+			let endIndex = content.indexOf(endTag);
 			// `END_TEMPLATE` だけがある場合、削除する
 			if (startIndex === -1 && endIndex !== -1) {
-				content = content.slice(0, endIndex) + content.slice(endIndex + "<!-- END_TEMPLATE -->".length);
+				content = content.slice(0, endIndex) + content.slice(endIndex + endTag.length);
 				endIndex = -1; // 削除後、リセット
 			}
 			if (startIndex !== -1) {
 				let beforeTag = content.slice(0, startIndex);
-				let afterTag = endIndex !== -1 ? content.slice(endIndex + "<!-- END_TEMPLATE -->".length) : "";
+				let afterTag = endIndex !== -1 ? content.slice(endIndex + endTag.length) : "";
 				return template
-					? `${beforeTag}<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->${afterTag}`
+					? `${beforeTag}${startTag}\n${template}\n${endTag}${afterTag}`
 					: `${beforeTag}${afterTag}`;
 			}
 			return template
-				? `${content.trimEnd()}\n\n<!-- START_TEMPLATE -->\n${template}\n<!-- END_TEMPLATE -->`
+				? `${content.trimEnd()}\n\n${startTag}\n${template}\n${endTag}`
 				: content;
 		});
 	}
@@ -268,23 +297,25 @@ export default class SimpleCitations extends Plugin {
 			if (abstract) {
 				abstract = abstract.replace(/\s+/g, " ").trim();
 			}
-			let startIndex = content.indexOf("<!-- START_ABSTRACT -->");
-			let endIndex = content.indexOf("<!-- END_ABSTRACT -->");
+			const startTag = "<!-- START_ABSTRACT -->";
+			const endTag = "<!-- END_ABSTRACT -->";
+			let startIndex = content.indexOf(startTag);
+			let endIndex = content.indexOf(endTag);
 			// `END_ABSTRACT` だけがある場合、削除する
 			if (startIndex === -1 && endIndex !== -1) {
-				content = content.slice(0, endIndex) + content.slice(endIndex + "<!-- END_ABSTRACT -->".length);
+				content = content.slice(0, endIndex) + content.slice(endIndex + endTag.length);
 				endIndex = -1; // 削除後、リセット
 			}
 			if (startIndex !== -1) {
 				let beforeTag = content.slice(0, startIndex);
-				let afterTag = endIndex !== -1 ? content.slice(endIndex + "<!-- END_ABSTRACT -->".length) : "";
+				let afterTag = endIndex !== -1 ? content.slice(endIndex + endTag.length) : "";
 	
 				return abstract
-					? `${beforeTag}<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->${afterTag}`
+					? `${beforeTag}${startTag}\n${abstract}\n${endTag}${afterTag}`
 					: `${beforeTag}${afterTag}`;
 			}
 			return abstract
-				? `${content.trimEnd()}\n\n<!-- START_ABSTRACT -->\n${abstract}\n<!-- END_ABSTRACT -->`
+				? `${content.trimEnd()}\n\n${startTag}\n${abstract}\n${endTag}`
 				: content;
 		});
 	}
