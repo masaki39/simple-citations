@@ -331,8 +331,8 @@ export default class SimpleCitations extends Plugin {
 	private addAfterFrontmatter(content: string, newContent: string): string {
 		const frontMatterEnd = content.startsWith('---\n') ? content.indexOf('---', 3) : -1;
 		return frontMatterEnd === -1
-			? newContent + '\n\n' + content
-			: content.slice(0, frontMatterEnd + 3) + '\n\n' + newContent + content.slice(frontMatterEnd + 3);
+			? newContent + '\n\n' + content.trimStart()
+			: content.slice(0, frontMatterEnd + 3) + '\n\n' + newContent + content.slice(frontMatterEnd + 3).trimStart();
 	}
 	
 }
