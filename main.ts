@@ -66,8 +66,11 @@ export default class SimpleCitations extends Plugin {
 					// update frontmatter
 					if (targetFile && targetFile instanceof TFile) {
 						await this.updateFrontMatter(targetFile,jsonData[i]);
-						await this.applyTemplate(targetFile, templateContent);
-						await this.applyAbstract(targetFile, this.settings.includeAbstract ? jsonData[i]['abstract'] : "");
+						await this.applyTemplateAndAbstract(
+							targetFile,
+							templateContent,
+							this.settings.includeAbstract ? jsonData[i]['abstract'] : ""
+						);
 						fileCount++;
 					}
 				}
@@ -125,12 +128,11 @@ export default class SimpleCitations extends Plugin {
 					if (!targetFile){
 						const newFile = await this.app.vault.create(`${normalizedFolderPath}/${targetFileName}`,"");
 						await this.updateFrontMatter(newFile,jsonData[i]);
-						await this.applyTemplate(newFile, templateContent);
-						if (this.settings.includeAbstract) {
-							await this.applyAbstract(newFile, jsonData[i]['abstract']);
-						} else {
-							await this.applyAbstract(newFile, "");
-						}
+						await this.applyTemplateAndAbstract(
+							newFile,
+							templateContent,
+							this.settings.includeAbstract ? jsonData[i]['abstract'] : ""
+						);
 						fileCount ++;
 					}
 				}
@@ -242,7 +244,7 @@ export default class SimpleCitations extends Plugin {
 	async updateFrontMatter(targetFile: TFile, item: any) {
 		await this.app.fileManager.processFrontMatter(targetFile, (fm) => {
 			fm.aliases = [];
-			if (!Array.isArray(fm.tags)) { // check if tags is an array
+			if (!Array.isArray(fm.tags)) {
 				fm.tags = fm.tags ? [fm.tags] : [];
 			}			
 			fm.title = item['title'];
@@ -302,56 +304,35 @@ export default class SimpleCitations extends Plugin {
 		});
 	}
 
-	async applyTemplate(targetFile: TFile, template: string) {
-		await this.app.vault.process(targetFile, (content: string) => {
-			const startTag = "<!-- START_TEMPLATE -->";
-			const endTag = "<!-- END_TEMPLATE -->";
-			let startIndex = content.indexOf(startTag);
-			let endIndex = content.indexOf(endTag);
-			// `END_TEMPLATE` だけがある場合、削除する
-			if (startIndex === -1 && endIndex !== -1) {
-				content = content.slice(0, endIndex) + content.slice(endIndex + endTag.length);
-				endIndex = -1; // 削除後、リセット
-			}
-			if (startIndex !== -1) {
-				let beforeTag = content.slice(0, startIndex);
-				let afterTag = endIndex !== -1 ? content.slice(endIndex + endTag.length) : "";
-				return template
-					? `${beforeTag}${startTag}\n${template}\n${endTag}${afterTag}`
-					: `${beforeTag}${afterTag}`;
-			}
-			return template
-				? `${content.trimEnd()}\n\n${startTag}\n${template}\n${endTag}`
-				: content;
+	async applyTemplateAndAbstract(targetFile: TFile, template: string, abstract: string) {
+		await this.app.vault.process(targetFile, (fileContent: string) => {
+			// テンプレートの適用
+			const templateStartTag = "<!-- START_TEMPLATE -->";
+			const templateEndTag = "<!-- END_TEMPLATE -->";
+			const templatePattern = new RegExp(`${templateStartTag}[\\s\\S]*?${templateEndTag}`);
+			const templateReplacement = template ? `${templateStartTag}\n${template}\n${templateEndTag}` : '';
+			fileContent = templatePattern.test(fileContent) // テンプレートが存在するかどうかを確認
+				? fileContent.replace(templatePattern, templateReplacement)
+				: this.addAfterFrontmatter(fileContent, templateReplacement);
+
+			// アブストラクトの適用
+			abstract = abstract ? abstract.replace(/\s+/g, " ").trim() : "";
+			const abstractStartTag = "<!-- START_ABSTRACT -->";
+			const abstractEndTag = "<!-- END_ABSTRACT -->";
+			const abstractPattern = new RegExp(`${abstractStartTag}[\\s\\S]*?${abstractEndTag}`);
+			const abstractReplacement = abstract ? `${abstractStartTag}\n${abstract}\n${abstractEndTag}` : '';
+			return abstractPattern.test(fileContent) // アブストラクトが存在するかどうかを確認
+				? fileContent.replace(abstractPattern, abstractReplacement)
+				: this.addAfterFrontmatter(fileContent, abstractReplacement);
 		});
 	}
-	
-	async applyAbstract(targetFile: TFile, abstract: string) {
-		await this.app.vault.process(targetFile, (content: string) => {
-			if (abstract) {
-				abstract = abstract.replace(/\s+/g, " ").trim();
-			}
-			const startTag = "<!-- START_ABSTRACT -->";
-			const endTag = "<!-- END_ABSTRACT -->";
-			let startIndex = content.indexOf(startTag);
-			let endIndex = content.indexOf(endTag);
-			// `END_ABSTRACT` だけがある場合、削除する
-			if (startIndex === -1 && endIndex !== -1) {
-				content = content.slice(0, endIndex) + content.slice(endIndex + endTag.length);
-				endIndex = -1; // 削除後、リセット
-			}
-			if (startIndex !== -1) {
-				let beforeTag = content.slice(0, startIndex);
-				let afterTag = endIndex !== -1 ? content.slice(endIndex + endTag.length) : "";
-	
-				return abstract
-					? `${beforeTag}${startTag}\n${abstract}\n${endTag}${afterTag}`
-					: `${beforeTag}${afterTag}`;
-			}
-			return abstract
-				? `${content.trimEnd()}\n\n${startTag}\n${abstract}\n${endTag}`
-				: content;
-		});
+
+	// add new content after frontmatter
+	private addAfterFrontmatter(content: string, newContent: string): string {
+		const frontMatterEnd = content.startsWith('---\n') ? content.indexOf('---', 3) : -1;
+		return frontMatterEnd === -1
+			? newContent + '\n\n' + content
+			: content.slice(0, frontMatterEnd + 3) + '\n\n' + newContent + content.slice(frontMatterEnd + 3);
 	}
 	
 }
