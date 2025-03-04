@@ -332,7 +332,7 @@ export default class SimpleCitations extends Plugin {
 		const frontMatterEnd = content.startsWith('---\n') ? content.indexOf('---', 3) : -1;
 		return frontMatterEnd === -1
 			? newContent + '\n\n' + content.trimStart()
-			: content.slice(0, frontMatterEnd + 3) + '\n\n' + newContent + content.slice(frontMatterEnd + 3).trimStart();
+			: content.slice(0, frontMatterEnd + 3) + '\n\n' + newContent + '\n\n' + content.slice(frontMatterEnd + 3).trimStart();
 	}
 	
 }
