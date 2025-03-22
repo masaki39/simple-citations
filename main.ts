@@ -179,8 +179,6 @@ export default class SimpleCitations extends Plugin {
 
 				// modify file content
 				await this.app.vault.modify(activeFile, newContent);
-				// Delay for a specific time (1 second)
-				await new Promise(resolve => setTimeout(resolve, 1000));
 
 				// pandoc settings
 				const BasePath = (this.app.vault.adapter as any).getBasePath(); // get base path
@@ -211,19 +209,20 @@ export default class SimpleCitations extends Plugin {
 					});
 
 					// close handling
-					pandocProcess.on('close', (code) => {
+					pandocProcess.on('close', async (code) => {
 						if (code === 0) {
 							new Notice('Pandoc execution completed successfully.');
 						} else {
 							new Notice(`Pandoc execution failed with code: ${code}`);
 						}
+						// Ensure the file content is always restored after pandoc process is closed
+						await this.app.vault.modify(activeFile, content);
 					});
 				} catch (error) {
 					new Notice(`An error occurred: ${error.message}`);
+					// Ensure the file content is always restored after pandoc process is closed
+					await this.app.vault.modify(activeFile, content);
 				}
-
-				// return
-				await this.app.vault.modify(activeFile, content);
 			}
 		});
 
