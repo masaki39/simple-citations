@@ -179,6 +179,8 @@ export default class SimpleCitations extends Plugin {
 
 				// modify file content
 				await this.app.vault.modify(activeFile, newContent);
+				// Delay for a specific time (1 second)
+				await new Promise(resolve => setTimeout(resolve, 1000));
 
 				// pandoc settings
 				const BasePath = (this.app.vault.adapter as any).getBasePath(); // get base path
