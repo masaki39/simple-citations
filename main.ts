@@ -172,7 +172,7 @@ export default class SimpleCitations extends Plugin {
 				const content = await this.app.vault.read(activeFile);
 
 				// replace
-				let newContent = content.replace(/\[\[(.*?)\|.*?\]\]/g, "[[$1]]"); // fix aliases 
+				let newContent = await content.replace(/\[\[(.*?)\|.*?\]\]/g, "[[$1]]"); // fix aliases 
 				newContent = newContent.replace(/\[\[@(.*?)\]\]/g, "[@$1]"); // convert to pandoc style
 				newContent = newContent.replace(/\](\s*?)\[@/g, ";@"); // connect citations
 				newContent = newContent.replace(/(\.)\s*?(\[@.*?\])/g, "$2$1 "); // insert before period
