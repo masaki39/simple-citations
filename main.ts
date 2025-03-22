@@ -7,6 +7,8 @@ interface SimpleCitationsSettings {
 	includeJournalTag: boolean;
 	includeAbstract: boolean;
 	templatePath: string;
+	autoAddCitations: boolean;
+	jsonUpdatedTime: number;
 }
 
 const DEFAULT_SETTINGS: SimpleCitationsSettings = {
@@ -16,6 +18,8 @@ const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	includeJournalTag: false,
 	includeAbstract: false,
 	templatePath: "",
+	autoAddCitations: false,
+	jsonUpdatedTime: new Date().getTime(),
 }
 
 export default class SimpleCitations extends Plugin {
@@ -79,7 +83,7 @@ export default class SimpleCitations extends Plugin {
 				const endTime = performance.now(); // end time
 				const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
 				notice.setMessage(`${fileCount} file(s) updated.\nTime taken: ${elapsedTime} seconds`);
-				// hide notice after 5 seconds
+				// hide notice after 3 seconds
 				setTimeout(() => {
 					notice.hide();
 				}, 3000);
@@ -141,7 +145,7 @@ export default class SimpleCitations extends Plugin {
 				const endTime = performance.now(); // end time
 				const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
 				notice.setMessage(`${fileCount} file(s) added.\nTime taken: ${elapsedTime} seconds`);
-				// hide notice after 5 seconds
+				// hide notice after 3 seconds
 				setTimeout(() => {
 					notice.hide();
 				}, 3000);
@@ -227,6 +231,15 @@ export default class SimpleCitations extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SimpleCitationsSettingTab(this.app, this));
 		
+		// watch json file
+		this.registerEvent(this.app.vault.on('modify', file => {
+			this.autoExecuteCommand(file as TFile);
+		}));
+
+		// auto execute add citations command at start
+		this.app.workspace.onLayoutReady(() => {
+			this.autoExecuteCommand(this.app.vault.getFileByPath(normalizePath(this.settings.jsonPath)) as TFile);
+		});
 	}
 
 	onunload() {
@@ -241,7 +254,7 @@ export default class SimpleCitations extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	async updateFrontMatter(targetFile: TFile, item: any) {
+	private async updateFrontMatter(targetFile: TFile, item: any) {
 		await this.app.fileManager.processFrontMatter(targetFile, (fm) => {
 			fm.aliases = [];
 			if (!Array.isArray(fm.tags)) {
@@ -304,7 +317,7 @@ export default class SimpleCitations extends Plugin {
 		});
 	}
 
-	async applyTemplateAndAbstract(targetFile: TFile, template: string, abstract: string) {
+	private async applyTemplateAndAbstract(targetFile: TFile, template: string, abstract: string) {
 		await this.app.vault.process(targetFile, (fileContent: string) => {
 			// テンプレートの適用
 			const templateStartTag = "<!-- START_TEMPLATE -->";
@@ -334,7 +347,21 @@ export default class SimpleCitations extends Plugin {
 			? newContent + '\n\n' + content.trimStart()
 			: content.slice(0, frontMatterEnd + 3) + '\n\n' + newContent + '\n\n' + content.slice(frontMatterEnd + 3).trimStart();
 	}
-	
+
+	// auto execute add citations command
+	private async autoExecuteCommand(file: TFile) {
+		if (this.settings.autoAddCitations) {
+			const normalizedJsonPath = normalizePath(this.settings.jsonPath);
+			if (file instanceof TFile && file.path === normalizedJsonPath) {
+				if (this.settings.jsonUpdatedTime === new Date(file.stat.mtime).getTime()) {
+					return;
+				}
+				(this.app as any).commands.executeCommandById('simple-citations:add-citations');
+				this.settings.jsonUpdatedTime = new Date(file.stat.mtime).getTime();
+				this.saveSettings();
+			}
+		}
+	}
 }
 
 class SimpleCitationsSettingTab extends PluginSettingTab {
@@ -403,6 +430,15 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.templatePath)
 				.onChange(async (value) => {
 					this.plugin.settings.templatePath = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Auto add citations')
+			.setDesc('When enabled, execute add commands automatically.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.autoAddCitations)
+				.onChange(async (value) => {
+					this.plugin.settings.autoAddCitations = value;
 					await this.plugin.saveSettings();
 				}));
 	}
