@@ -9,9 +9,10 @@ Enable the Obsidian community plugin, then install and activate it. After that, 
 ## Usage 
 
 - Use the "Add command" to import all literature notes that are not yet in the vault.
+    - You can automarically execute this command when the bibliography file is updated (optional).
 - Use the "Update command" to update the notes as described below.
-- The "Modified export (docx)" command executes the "Export as Word Document (docx)" command from the [Pandoc Plugin](https://github.com/OliverBalfour/obsidian-pandoc).
-    - Before execution, it converts links to literature notes into Pandoc's format and **retains them for only five seconds**.
+- The "Pandoc Citeproc Execution (docx)" command executes the pandoc command with the citeproc option.
+    - Before execution, it converts links to literature notes into Pandoc's format.
     - This enables you to create a bibliography.
 - The "Copy missing note links" command is useful for identifying and copying links to literature notes that are not included in the JSON file.
 
