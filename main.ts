@@ -1,4 +1,5 @@
 import {App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normalizePath } from 'obsidian';
+import { spawn } from 'child_process';
 
 interface SimpleCitationsSettings {
 	jsonPath: string;
@@ -9,6 +10,9 @@ interface SimpleCitationsSettings {
 	templatePath: string;
 	autoAddCitations: boolean;
 	jsonUpdatedTime: number;
+	inputPandocPath: string;
+	pandocOutputPath: string;
+	pandocArgs: string;
 }
 
 const DEFAULT_SETTINGS: SimpleCitationsSettings = {
@@ -20,6 +24,9 @@ const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	templatePath: "",
 	autoAddCitations: false,
 	jsonUpdatedTime: new Date().getTime(),
+	inputPandocPath: "",
+	pandocOutputPath: "",
+	pandocArgs: "-f markdown+hard_line_breaks"
 }
 
 export default class SimpleCitations extends Plugin {
@@ -154,7 +161,7 @@ export default class SimpleCitations extends Plugin {
 
 		this.addCommand({
 			id: 'execute-pandoc',
-			name: 'Modified export (docx)',
+			name: 'Pandoc Citeproc Execution (docx)',
 			callback: async () => {
 				// get file
 				const activeFile = this.app.workspace.getActiveFile();
@@ -164,30 +171,54 @@ export default class SimpleCitations extends Plugin {
 				}
 				const content = await this.app.vault.read(activeFile);
 
-				// check if the command exists
-				const commandId = "obsidian-pandoc:pandoc-export-docx";
-				const commands = (this.app as any).commands;
-				const commandExist = commands.listCommands().some((cmd: any) => cmd.id === commandId);
-				if (!commandExist){
-					new Notice("Install Pandoc Plugin");
-				return;
-				}
-
 				// replace
-				let newContent = await content.replace(/\[\[(.*?)\|.*?\]\]/g, "[[$1]]"); // fix aliases 
+				let newContent = content.replace(/\[\[(.*?)\|.*?\]\]/g, "[[$1]]"); // fix aliases 
 				newContent = newContent.replace(/\[\[@(.*?)\]\]/g, "[@$1]"); // convert to pandoc style
 				newContent = newContent.replace(/\](\s*?)\[@/g, ";@"); // connect citations
 				newContent = newContent.replace(/(\.)\s*?(\[@.*?\])/g, "$2$1 "); // insert before period
 
-				// modify file
+				// modify file content
 				await this.app.vault.modify(activeFile, newContent);
 
-				// execute
-				await commands.executeCommandById(commandId);
-				new Notice ("Wait for 5 seconds.");
+				// pandoc settings
+				const BasePath = (this.app.vault.adapter as any).getBasePath(); // get base path
+				const PandocPath = normalizePath(this.settings.inputPandocPath) || "pandoc"; // pandoc path
+				const CurrentFilePath = normalizePath(activeFile.path); // current file path
+				const CurrentFileFolder = CurrentFilePath.split("/").slice(0, -1).join("/"); // current file folder
+				const CurrentFileName = CurrentFilePath.split("/").pop(); // current file name
+				const PandocInputFile = BasePath + "/" + CurrentFilePath; // input file
+				const PandocOutputPath = this.settings.pandocOutputPath ? normalizePath(this.settings.pandocOutputPath) : BasePath + "/" + CurrentFileFolder; // output path
+				const PandocOutputFile = PandocOutputPath + "/" + CurrentFileName?.replace(/\.md$/, ".docx"); // output file
+				const PandocExtraArgs = this.settings.pandocArgs ? this.settings.pandocArgs.split(/[\s\n]+/) : [];
+				const PandocArgs = [
+					"--citeproc",
+					"--bibliography",
+					BasePath + "/" + normalizePath(this.settings.jsonPath),
+					...PandocExtraArgs
+				];
 
-				// Delay for a specific time (5 seconds)
-				await new Promise(resolve => setTimeout(resolve, 5000));
+				// execute pandoc
+				try {
+					const pandocProcess = spawn(PandocPath, 
+						[PandocInputFile, "-o", PandocOutputFile, ...PandocArgs], 
+						{env: process.env});
+
+					// error handling
+					pandocProcess.on('error', (err) => {
+						new Notice(`Pandoc execution failed: ${err.message}`);
+					});
+
+					// close handling
+					pandocProcess.on('close', (code) => {
+						if (code === 0) {
+							new Notice('Pandoc execution completed successfully.');
+						} else {
+							new Notice(`Pandoc execution failed with code: ${code}`);
+						}
+					});
+				} catch (error) {
+					new Notice(`An error occurred: ${error.message}`);
+				}
 
 				// return
 				await this.app.vault.modify(activeFile, content);
@@ -377,8 +408,10 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		containerEl.createEl('h2', { text: 'Basic Settings' });
 		new Setting(containerEl)
-			.setName('Set json file path')
+			.setName('Set bibliography file path')
+			.setDesc('Better CSL JSON')
 			.addText(text => text
 				.setPlaceholder('Enter Relative Path')
 				.setValue(this.plugin.settings.jsonPath)
@@ -388,6 +421,7 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 				}));
 		new Setting(containerEl)
 			.setName('Set literature note folder path')
+			.setDesc('Folder to save literature notes. Default: root folder.')
 			.addText(text => text
 				.setPlaceholder('Enter Relative Path')
 				.setValue(this.plugin.settings.folderPath)
@@ -395,6 +429,16 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.folderPath = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Auto add citations')
+			.setDesc('When enabled, execute add commands automatically when the bibliography file is updated.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.autoAddCitations)
+				.onChange(async (value) => {
+					this.plugin.settings.autoAddCitations = value;
+					await this.plugin.saveSettings();
+				}));
+		containerEl.createEl('h2', { text: 'Additional Properties' });
 		new Setting(containerEl)
 			.setName('Include author tag')
 			.setDesc('When enabled, adds a tag with the first author\'s name.')
@@ -413,18 +457,19 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.includeJournalTag = value;
 					await this.plugin.saveSettings();
 				}));
+		containerEl.createEl('h2', { text: 'Additional Content'});
 		new Setting(containerEl)
 			.setName('Include abstract to content')
-			.setDesc('When enabled, adds the abstract to the content.')
+			.setDesc('When enabled, adds the abstract to the top of each literature note.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.includeAbstract)
 				.onChange(async (value) => {
 					this.plugin.settings.includeAbstract = value;
 					await this.plugin.saveSettings();
 				}));
-
 		new Setting(containerEl)
 			.setName('Set template file path')
+			.setDesc('When setting this, adds the template to the top of each literature note. (Intended for use with dynamic templates such as Dataview.)')
 			.addText(text => text
 				.setPlaceholder('Enter Relative Path')
 				.setValue(this.plugin.settings.templatePath)
@@ -432,14 +477,41 @@ class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.templatePath = value;
 					await this.plugin.saveSettings();
 				}));
+		containerEl.createEl('h2', { text: 'Pandoc Settings' });
 		new Setting(containerEl)
-			.setName('Auto add citations')
-			.setDesc('When enabled, execute add commands automatically.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.autoAddCitations)
+			.setName('Pandoc path')
+			.setDesc('On Mac/Linux use the output of `which pandoc` in terminal; on Windows use the output of `where pandoc` in cmd.')
+			.addText(text => text
+				.setPlaceholder('pandoc')
+				.setValue(this.plugin.settings.inputPandocPath)
 				.onChange(async (value) => {
-					this.plugin.settings.autoAddCitations = value;
+					this.plugin.settings.inputPandocPath = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Export folder')
+			.setDesc('Absolute path to an export folder.')
+			.addText(text => text
+				.setPlaceholder('Same as target')
+				.setValue(this.plugin.settings.pandocOutputPath)
+				.onChange(async (value) => {
+					this.plugin.settings.pandocOutputPath = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
+			.setName('Extra Pandoc arguments')
+			.setDesc('Add extra command line arguments for pandoc. Absolute path only. New lines are turned into spaces. Citeproc and bibliography are automatically added.')
+			.addTextArea(textArea => {
+				textArea
+					.setPlaceholder('Example: -f markdown+hard_line_breaks')
+					.setValue(this.plugin.settings.pandocArgs)
+					.onChange(async (value) => {
+						this.plugin.settings.pandocArgs = value;
+						await this.plugin.saveSettings();
+					});
+				textArea.inputEl.style.height = '200px';
+				textArea.inputEl.style.width = '200px';
+			});
+				
 	}
 }
