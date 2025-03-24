@@ -156,6 +156,10 @@ export default class SimpleCitations extends Plugin {
 				setTimeout(() => {
 					notice.hide();
 				}, 3000);
+
+				// update json updated time
+				this.settings.jsonUpdatedTime = new Date(jsonFile.stat.mtime).getTime();
+				this.saveSettings();
 			}
 		});
 
@@ -389,8 +393,6 @@ export default class SimpleCitations extends Plugin {
 					return;
 				}
 				(this.app as any).commands.executeCommandById('simple-citations:add-citations');
-				this.settings.jsonUpdatedTime = new Date(file.stat.mtime).getTime();
-				this.saveSettings();
 			}
 		}
 	}
