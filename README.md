@@ -1,4 +1,4 @@
-# Simple Citations <a href='https://ko-fi.com/Q5Q31CGF07' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+# Simple Citations
 
 This is an Obsidian plugin that reinforces the workflow between Zotero and Obsidian. It enables the importation of literature notes from Zotero, and use them not only as the knowledge base but also the references for your writing. Requiring the installation of [Better Bibtex for Zotero](https://retorque.re/zotero-better-bibtex/) and [Pandoc](https://pandoc.org).
 
@@ -103,3 +103,5 @@ The plugin modifies the link format as follows:
 - `[[citation-key]][[citation-key]]` → `[@citation-key;@citation-key]` // multiple citations are allowed
 - `[[citation-key]]   [[citation-key]]` → `[@citation-key;@citation-key]` // spaces or line breaks can be inserted between links
 - End of a sentence: `[[citation-key]]` → end of a sentence `[@citation-key]` // inserts links before `.` if there is nothing between them.
+
+<a href='https://ko-fi.com/Q5Q31CGF07' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
