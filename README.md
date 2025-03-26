@@ -76,6 +76,7 @@ Generate tags for the following:
 ### Abstract Option
 
 Insert the abstract section in the top of the note.
+The comment tag below is used to identify the abstract section.
 
 `<!-- START_ABSTRACT -->`
 
@@ -84,6 +85,7 @@ Insert the abstract section in the top of the note.
 ### Template Option
 
 Insert the template content in the top of the note.
+The comment tag below is used to identify the template section.
 
 `<!-- START_TEMPLATE -->`
 
@@ -98,10 +100,12 @@ Insert the template content in the top of the note.
 When executing the "Pandoc Citeproc Execution (docx)" command, the link format is temporarily converted to the format of the pandoc citeproc.
 
 The plugin modifies the link format as follows:
-- `[[citation-key]]` → `[@citation-key]`
-- `[[citation-key|description]]` → `[@citation-key]` // aliases are allowed
-- `[[citation-key]][[citation-key]]` → `[@citation-key;@citation-key]` // multiple citations are allowed
-- `[[citation-key]]   [[citation-key]]` → `[@citation-key;@citation-key]` // spaces or line breaks can be inserted between links
-- End of a sentence: `[[citation-key]]` → end of a sentence `[@citation-key]` // inserts links before `.` if there is nothing between them.
+- `[[@citation-key]]` → `[@citation-key]`
+- `[[@citation-key|aliases]]` → `[@citation-key]` // aliases are allowed
+- `[[@citation-key]][[@citation-key]]` → `[@citation-key;@citation-key]` // multiple citations are allowed
+- `[[@citation-key]]   [[@citation-key]]` → `[@citation-key;@citation-key]` // spaces or line breaks can be inserted between links
+- End of a sentence: `[[@citation-key]]` → end of a sentence `[@citation-key]`. // inserts links before `.` if there is nothing between them.
+
+## Support
 
 <a href='https://ko-fi.com/Q5Q31CGF07' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi6.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
