@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS, SimpleCitationsSettings } from './settings/settings';
 import { SimpleCitationsSettingTab } from './settings/SettingTab';
 import { autoAddCitations } from './commands/AutoAddCitations';
 import { updateContent } from './utils/updateContent';
+import { checkRequiredFiles } from './utils/checkRequiredFiles';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -16,19 +17,9 @@ export default class SimpleCitations extends Plugin {
 			name: 'Update literature notes',
 			callback: async () => {
 				const startTime = performance.now(); // start time
-				// normalize path
-				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
-				const normalizedFolderPath = normalizePath(this.settings.folderPath);
-				const normalizedTemplatePath = normalizePath(this.settings.templatePath + ".md");
 
-				// get json and folder existing check
-				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
-				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
-				const templateFile = this.app.vault.getFileByPath(`${normalizedTemplatePath}`);
-				if (!jsonFile || !(folder instanceof TFolder)) {
-					new Notice('Something wrong with the settings.');
-					return; 
-				}
+				const { jsonFile, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
+				if (!jsonFile || !folder) return;
 
 				// parse json Data and files
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
@@ -79,19 +70,9 @@ export default class SimpleCitations extends Plugin {
 			name: 'Add literature notes',
 			callback: async () => {
 				const startTime = performance.now(); // start time
-				// normalize path
-				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
-				const normalizedFolderPath = normalizePath(this.settings.folderPath);
-				const normalizedTemplatePath = normalizePath(this.settings.templatePath + ".md");
 
-				// get json and folder exsistiing check
-				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
-				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
-				const templateFile = this.app.vault.getFileByPath(`${normalizedTemplatePath}`);
-				if (!jsonFile || !(folder instanceof TFolder)) {
-					new Notice('Something wrong with the settings.');
-					return; 
-				}
+				const { jsonFile, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
+				if (!jsonFile || !folder) return;
 				
 				// parse json Data and files
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
@@ -114,7 +95,7 @@ export default class SimpleCitations extends Plugin {
 
 					// if nonexisting, create file
 					if (!targetFile){
-						const newFile = await this.app.vault.create(`${normalizedFolderPath}/${targetFileName}`,"");
+						const newFile = await this.app.vault.create(`${folder.path}/${targetFileName}`,"");
 						await this.updateFrontMatter(newFile,jsonData[i]);
 						await updateContent(
 							this.app,
@@ -212,16 +193,10 @@ export default class SimpleCitations extends Plugin {
 			id: 'copy-missing-note-links',
 			name: 'Copy missing note links not included in json file',
 			callback: async () => {
-				// normalize path
-				const normalizedJsonPath = normalizePath(this.settings.jsonPath);
-				const normalizedFolderPath = normalizePath(this.settings.folderPath);
-				// get json and folder exsistiing check
-				const jsonFile = this.app.vault.getFileByPath(`${normalizedJsonPath}`);
-				const folder = this.app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
-				if (!jsonFile || !(folder instanceof TFolder)) {
-					new Notice('Something wrong with the settings.');
-					return;
-				}
+
+				const { jsonFile, folder } = checkRequiredFiles(this.app, this.settings);
+				if (!jsonFile || !folder) return;
+
 				// parse json Data and file names
 				const jsonContents = await this.app.vault.cachedRead(jsonFile);
 				const jsonData = JSON.parse(jsonContents);
