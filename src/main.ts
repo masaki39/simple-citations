@@ -1,8 +1,9 @@
-import {App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normalizePath } from 'obsidian';
+import { Notice, Plugin, TFile, TFolder, normalizePath } from 'obsidian';
 import { spawn } from 'child_process';
 import { addAfterFrontmatter } from './utils/addAfterFrontmatter';
 import { DEFAULT_SETTINGS, SimpleCitationsSettings } from './settings/settings';
 import { SimpleCitationsSettingTab } from './settings/SettingTab';
+import { autoAddCitations } from './commands/AutoAddCitations';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -244,12 +245,12 @@ export default class SimpleCitations extends Plugin {
 		
 		// watch json file
 		this.registerEvent(this.app.vault.on('modify', file => {
-			this.autoExecuteCommand(file as TFile);
+			autoAddCitations(this.app, this.settings, file as TFile);
 		}));
 
 		// auto execute add citations command at start
 		this.app.workspace.onLayoutReady(() => {
-			this.autoExecuteCommand(this.app.vault.getFileByPath(normalizePath(this.settings.jsonPath)) as TFile);
+			autoAddCitations(this.app, this.settings, this.app.vault.getFileByPath(normalizePath(this.settings.jsonPath)) as TFile);
 		});
 	}
 
@@ -349,18 +350,5 @@ export default class SimpleCitations extends Plugin {
 				? fileContent.replace(abstractPattern, abstractReplacement)
 				: addAfterFrontmatter(fileContent, abstractReplacement);
 		});
-	}
-
-	// auto execute add citations command
-	private async autoExecuteCommand(file: TFile) {
-		if (this.settings.autoAddCitations) {
-			const normalizedJsonPath = normalizePath(this.settings.jsonPath);
-			if (file instanceof TFile && file.path === normalizedJsonPath) {
-				if (this.settings.jsonUpdatedTime === new Date(file.stat.mtime).getTime()) {
-					return;
-				}
-				(this.app as any).commands.executeCommandById('simple-citations:add-citations');
-			}
-		}
 	}
 }
