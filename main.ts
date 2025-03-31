@@ -1,5 +1,6 @@
 import {App, Notice, Plugin, PluginSettingTab, Setting, TFile, TFolder, normalizePath } from 'obsidian';
 import { spawn } from 'child_process';
+import { addAfterFrontmatter } from './utils/addAfterFrontmatter';
 
 interface SimpleCitationsSettings {
 	jsonPath: string;
@@ -362,7 +363,7 @@ export default class SimpleCitations extends Plugin {
 			const templateReplacement = template ? `${templateStartTag}\n${template}\n${templateEndTag}` : '';
 			fileContent = templatePattern.test(fileContent) // テンプレートが存在するかどうかを確認
 				? fileContent.replace(templatePattern, templateReplacement)
-				: this.addAfterFrontmatter(fileContent, templateReplacement);
+				: addAfterFrontmatter(fileContent, templateReplacement);
 
 			// アブストラクトの適用
 			abstract = abstract ? abstract.replace(/\s+/g, " ").trim() : "";
@@ -372,16 +373,8 @@ export default class SimpleCitations extends Plugin {
 			const abstractReplacement = abstract ? `${abstractStartTag}\n${abstract}\n${abstractEndTag}` : '';
 			return abstractPattern.test(fileContent) // アブストラクトが存在するかどうかを確認
 				? fileContent.replace(abstractPattern, abstractReplacement)
-				: this.addAfterFrontmatter(fileContent, abstractReplacement);
+				: addAfterFrontmatter(fileContent, abstractReplacement);
 		});
-	}
-
-	// add new content after frontmatter
-	private addAfterFrontmatter(content: string, newContent: string): string {
-		const frontMatterEnd = content.startsWith('---\n') ? content.indexOf('---', 3) : -1;
-		return frontMatterEnd === -1
-			? newContent + '\n\n' + content.trimStart()
-			: content.slice(0, frontMatterEnd + 3) + '\n\n' + newContent + '\n\n' + content.slice(frontMatterEnd + 3).trimStart();
 	}
 
 	// auto execute add citations command
