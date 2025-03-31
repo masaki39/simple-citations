@@ -19,7 +19,6 @@ export function updateSettingFolderStatus(app: App, statusSpan: HTMLElement, pat
 		statusSpan.textContent = '❌';
 } 
 
-
 export function updateSettingTemplateStatus(app: App, statusSpan: HTMLElement, path: string) {
     if (!path) {statusSpan.textContent = ''; return; }
     const normalizedPath = normalizePath(path + ".md");
