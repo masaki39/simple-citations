@@ -1,9 +1,9 @@
 import { Notice, Plugin, TFile, TFolder, normalizePath } from 'obsidian';
 import { spawn } from 'child_process';
-import { addAfterFrontmatter } from './utils/addAfterFrontmatter';
 import { DEFAULT_SETTINGS, SimpleCitationsSettings } from './settings/settings';
 import { SimpleCitationsSettingTab } from './settings/SettingTab';
 import { autoAddCitations } from './commands/AutoAddCitations';
+import { updateContent } from './utils/updateContent';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -53,7 +53,8 @@ export default class SimpleCitations extends Plugin {
 					// update frontmatter
 					if (targetFile && targetFile instanceof TFile) {
 						await this.updateFrontMatter(targetFile,jsonData[i]);
-						await this.applyTemplateAndAbstract(
+						await updateContent(
+							this.app,
 							targetFile,
 							templateContent,
 							this.settings.includeAbstract ? jsonData[i]['abstract'] : ""
@@ -115,7 +116,8 @@ export default class SimpleCitations extends Plugin {
 					if (!targetFile){
 						const newFile = await this.app.vault.create(`${normalizedFolderPath}/${targetFileName}`,"");
 						await this.updateFrontMatter(newFile,jsonData[i]);
-						await this.applyTemplateAndAbstract(
+						await updateContent(
+							this.app,
 							newFile,
 							templateContent,
 							this.settings.includeAbstract ? jsonData[i]['abstract'] : ""
@@ -326,29 +328,6 @@ export default class SimpleCitations extends Plugin {
 					}
 				}
 			}
-		});
-	}
-
-	private async applyTemplateAndAbstract(targetFile: TFile, template: string, abstract: string) {
-		await this.app.vault.process(targetFile, (fileContent: string) => {
-			// テンプレートの適用
-			const templateStartTag = "<!-- START_TEMPLATE -->";
-			const templateEndTag = "<!-- END_TEMPLATE -->";
-			const templatePattern = new RegExp(`${templateStartTag}[\\s\\S]*?${templateEndTag}`);
-			const templateReplacement = template ? `${templateStartTag}\n${template}\n${templateEndTag}` : '';
-			fileContent = templatePattern.test(fileContent) // テンプレートが存在するかどうかを確認
-				? fileContent.replace(templatePattern, templateReplacement)
-				: addAfterFrontmatter(fileContent, templateReplacement);
-
-			// アブストラクトの適用
-			abstract = abstract ? abstract.replace(/\s+/g, " ").trim() : "";
-			const abstractStartTag = "<!-- START_ABSTRACT -->";
-			const abstractEndTag = "<!-- END_ABSTRACT -->";
-			const abstractPattern = new RegExp(`${abstractStartTag}[\\s\\S]*?${abstractEndTag}`);
-			const abstractReplacement = abstract ? `${abstractStartTag}\n${abstract}\n${abstractEndTag}` : '';
-			return abstractPattern.test(fileContent) // アブストラクトが存在するかどうかを確認
-				? fileContent.replace(abstractPattern, abstractReplacement)
-				: addAfterFrontmatter(fileContent, abstractReplacement);
 		});
 	}
 }
