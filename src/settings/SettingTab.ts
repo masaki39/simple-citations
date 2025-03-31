@@ -1,5 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import SimpleCitations from "../main";
+import { updateSettingFolderStatus, updateSettingJsonStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
 
 export class SimpleCitationsSettingTab extends PluginSettingTab {
 	plugin: SimpleCitations;
@@ -18,23 +19,45 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Set bibliography file path')
 			.setDesc('Better CSL JSON')
-			.addText(text => text
-				.setPlaceholder('Enter Relative Path')
-				.setValue(this.plugin.settings.jsonPath)
-				.onChange(async (value) => {
-					this.plugin.settings.jsonPath = value;
-					await this.plugin.saveSettings();
-				}));
+			.addText(text => {
+				const container = text.inputEl.parentElement;
+				let statusSpan: HTMLElement | null = null;
+				if (container) {
+					statusSpan = container.insertBefore(document.createElement('span'), text.inputEl);
+					updateSettingJsonStatus(this.app, statusSpan, this.plugin.settings.jsonPath);
+				}
+				return text
+					.setPlaceholder('Enter Relative Path')
+					.setValue(this.plugin.settings.jsonPath)
+					.onChange(async (value) => {
+						this.plugin.settings.jsonPath = value;
+						await this.plugin.saveSettings();
+						if (container && statusSpan) {
+							updateSettingJsonStatus(this.app, statusSpan, value);
+						}
+					});
+			});
 		new Setting(containerEl)
 			.setName('Set literature note folder path')
 			.setDesc('Folder to save literature notes. Default: root folder.')
-			.addText(text => text
-				.setPlaceholder('Enter Relative Path')
-				.setValue(this.plugin.settings.folderPath)
-				.onChange(async (value) => {
-					this.plugin.settings.folderPath = value;
-					await this.plugin.saveSettings();
-				}));
+			.addText(text => {
+				const container = text.inputEl.parentElement;
+				let statusSpan: HTMLElement | null = null;
+				if (container) {
+					statusSpan = container.insertBefore(document.createElement('span'), text.inputEl);
+					updateSettingFolderStatus(this.app, statusSpan, this.plugin.settings.folderPath);
+				}
+				return text
+					.setPlaceholder('Enter Relative Path')
+					.setValue(this.plugin.settings.folderPath)
+					.onChange(async (value) => {
+						this.plugin.settings.folderPath = value;
+						await this.plugin.saveSettings();
+						if (container && statusSpan) {
+							updateSettingFolderStatus(this.app, statusSpan, value);
+						}
+					});
+			});
 		new Setting(containerEl)
 			.setName('Auto add citations')
 			.setDesc('When enabled, execute add commands automatically when the bibliography file is updated.')
@@ -76,13 +99,24 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Set template file path')
 			.setDesc('When setting this, adds the template to the top of each literature note. (Intended for use with dynamic templates such as Dataview.)')
-			.addText(text => text
-				.setPlaceholder('Enter Relative Path')
-				.setValue(this.plugin.settings.templatePath)
-				.onChange(async (value) => {
-					this.plugin.settings.templatePath = value;
-					await this.plugin.saveSettings();
-				}));
+			.addText(text => {
+				const container = text.inputEl.parentElement;
+				let statusSpan: HTMLElement | null = null;
+				if (container) {
+					statusSpan = container.insertBefore(document.createElement('span'), text.inputEl);
+					updateSettingTemplateStatus(this.app, statusSpan, this.plugin.settings.templatePath);
+				}
+				return text
+					.setPlaceholder('Enter Relative Path')
+					.setValue(this.plugin.settings.templatePath)
+					.onChange(async (value) => {
+						this.plugin.settings.templatePath = value;
+						await this.plugin.saveSettings();
+						if (container && statusSpan) {
+							updateSettingTemplateStatus(this.app, statusSpan, value);
+						}
+					});
+			});
 		containerEl.createEl('h2', { text: 'Pandoc Settings' });
 		new Setting(containerEl)
 			.setName('Pandoc path')

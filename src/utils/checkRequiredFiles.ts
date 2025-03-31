@@ -16,11 +16,13 @@ export function checkRequiredFiles(app: App, settings: SimpleCitationsSettings):
 
     // get json and folder existing check
     const jsonFile = app.vault.getFileByPath(`${normalizedJsonPath}`);
+    const isJsonFile = jsonFile && jsonFile.extension === 'json';
     const folder = app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
+    const isFolder = folder && folder instanceof TFolder;
     const templateFile = app.vault.getFileByPath(`${normalizedTemplatePath}`);
-
+ 
     // Individual error checks
-    if (!jsonFile) {
+    if (!isJsonFile) {
         new Notice(`JSON file not found: ${normalizedJsonPath}`);
         return {
             jsonFile: null,
@@ -30,7 +32,7 @@ export function checkRequiredFiles(app: App, settings: SimpleCitationsSettings):
         };
     }
 
-    if (!folder || !(folder instanceof TFolder)) {
+    if (!isFolder) {
         new Notice(`Folder not found: ${normalizedFolderPath}`);
         return {
             jsonFile: null,
