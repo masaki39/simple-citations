@@ -5,6 +5,7 @@ import { SimpleCitationsSettingTab } from './settings/SettingTab';
 import { autoAddCitations } from './commands/AutoAddCitations';
 import { updateContent } from './utils/updateContent';
 import { checkRequiredFiles } from './utils/checkRequiredFiles';
+import { validateCitekey } from './utils/validateCitekey';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -37,7 +38,7 @@ export default class SimpleCitations extends Plugin {
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
 					const citekey = jsonData[i]?.['citation-key'];
-					if (!citekey) continue; // `citation-key` がないデータはスキップ
+					if (!validateCitekey(citekey)) continue; // `citation-key` がないデータやおかしいデータはskip
 					const targetFileName = "@" + citekey + ".md";
 					const targetFile = files.get(targetFileName); // O(1) の高速検索
 
@@ -89,7 +90,7 @@ export default class SimpleCitations extends Plugin {
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
 					const citekey = jsonData[i]?.['citation-key'];
-					if (!citekey) continue; // `citation-key` がないデータはスキップ
+					if (!validateCitekey(citekey)) continue; // `citation-key` がないデータはスキップ
 					const targetFileName = "@" + citekey + ".md";
 					const targetFile = files.get(targetFileName); // O(1) の高速検索
 
