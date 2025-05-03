@@ -3,6 +3,7 @@ export interface SimpleCitationsSettings {
 	folderPath: string;
 	includeAuthorTag: boolean;
 	includeJournalTag: boolean;
+	optionalFields: string;
 	includeAbstract: boolean;
 	templatePath: string;
 	autoAddCitations: boolean;
@@ -17,6 +18,7 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	folderPath: "",
 	includeAuthorTag: false,
 	includeJournalTag: false,
+	optionalFields: "",
 	includeAbstract: false,
 	templatePath: "",
 	autoAddCitations: false,

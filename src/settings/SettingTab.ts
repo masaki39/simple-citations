@@ -86,6 +86,16 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.includeJournalTag = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Optional fields')
+			.setDesc('Set optional fields from JSON. (Separate by line breaks, 1st level only)')
+			.addTextArea(textArea => textArea
+				.setPlaceholder('key\npdf')
+				.setValue(this.plugin.settings.optionalFields)
+				.onChange(async (value) => {
+					this.plugin.settings.optionalFields = value;
+					await this.plugin.saveSettings();
+				}));
 		containerEl.createEl('h2', { text: 'Additional Content'});
 		new Setting(containerEl)
 			.setName('Include abstract to content')

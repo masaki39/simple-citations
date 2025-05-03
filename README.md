@@ -73,6 +73,32 @@ Generate tags for the following:
 - `author/${firstAuthor}`
 - `journal/${journalName}`
 
+### Optional fields
+
+Better Bibtex for Zotero has the function to add optional fields to the bibliography file.
+
+1. Open the Zotero
+2. Open the "Preferences"
+3. Set "postscript" as you want
+
+example:
+
+```javascript
+if (Translator.BetterCSLJSON) {
+  csl.key = zotero.key;
+  csl.pdf = zotero.attachments
+    .filter(a => a.localPath && a.localPath.toLowerCase().endsWith('.pdf'))
+    .map(a => a.localPath);
+}
+```
+
+> [!tip]
+> Item key is useful if you want to use Zotero API.
+
+The following is the reference for the script.
+
+[Scripting :: Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/exporting/scripting/index.html)
+
 ### Abstract Option
 
 Insert the abstract section in the top of the note.

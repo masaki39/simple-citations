@@ -304,6 +304,29 @@ export default class SimpleCitations extends Plugin {
 					}
 				}
 			}
+
+			// add optional fields
+			if (this.settings.optionalFields) {
+				const optionalFields = this.settings.optionalFields
+					.split("\n")
+					.map(f => f.trim())
+					.filter(Boolean);
+				for (const field of optionalFields) {
+					if (item[field] !== undefined) {
+						const value = item[field];
+						if (
+							typeof value === "string" ||
+							typeof value === "number" ||
+							(Array.isArray(value) && value.every(v =>
+								typeof v === "string" || typeof v === "number"
+							))
+						) {
+							fm[field] = value;
+						}
+						// それ以外（オブジェクト等）は無視
+					}
+				}
+			}
 		});
 	}
 }
