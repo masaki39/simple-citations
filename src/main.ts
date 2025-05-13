@@ -82,11 +82,9 @@ export default class SimpleCitations extends Plugin {
 				let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 				let fileCount: number = 0;
 				
-				let notice = new Notice(`0 file(s) added.`, 0);
-				const intervalId = setInterval(() => {
-					notice.setMessage(`${fileCount} file(s) added.`);
-				}, 200);
-				
+				let notice: Notice | null = null;
+				let intervalId: NodeJS.Timeout | null = null;
+
 				// check json file
 				for (let i = 0; i < jsonData.length; i++) {
 					const citekey = jsonData[i]?.['citation-key'];
@@ -105,21 +103,32 @@ export default class SimpleCitations extends Plugin {
 							this.settings.includeAbstract ? jsonData[i]['abstract'] : ""
 						);
 						fileCount ++;
+						if (fileCount === 1) {
+							notice = new Notice(`${fileCount} file(s) added.`, 0);
+							intervalId = setInterval(() => {
+								notice?.setMessage(`${fileCount} file(s) added.`);
+							}, 200);
+						}
 					}
 				}
 				// stop timer
-				clearInterval(intervalId);
-				const endTime = performance.now(); // end time
-				const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
-				notice.setMessage(`${fileCount} file(s) added.\nTime taken: ${elapsedTime} seconds`);
-				// hide notice after 3 seconds
-				setTimeout(() => {
-					notice.hide();
-				}, 3000);
+				if (intervalId) {
+					clearInterval(intervalId);
+				}
+				if (notice) {
+					const endTime = performance.now(); // end time
+					const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
+					notice.setMessage(`${fileCount} file(s) added.\nTime taken: ${elapsedTime} seconds`);
+					// hide notice after 3 seconds
+					setTimeout(() => {
+						notice?.hide();
+					}, 3000);
+				}
 
 				// update json updated time
 				this.settings.jsonUpdatedTime = new Date(jsonFile.stat.mtime).getTime();
 				this.saveSettings();
+				console.log("Add literature notes completed.");
 			}
 		});
 
