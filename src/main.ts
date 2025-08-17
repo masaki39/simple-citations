@@ -3,68 +3,27 @@ import { spawn } from 'child_process';
 import { DEFAULT_SETTINGS, SimpleCitationsSettings } from './settings/settings';
 import { SimpleCitationsSettingTab } from './settings/SettingTab';
 import { autoAddCitations } from './commands/AutoAddCitations';
+import { UpdateCitations } from './commands/updateCitations';
 import { updateContent } from './utils/updateContent';
+import { updateFrontMatter } from './utils/updateFrontMatter';
 import { checkRequiredFiles } from './utils/checkRequiredFiles';
 import { validateCitekey } from './utils/validateCitekey';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
+	private updateCitations: UpdateCitations;
 	
 	async onload() {
 		await this.loadSettings();
 
-		this.addCommand({
-			id: 'update-citations',
-			name: 'Update literature notes',
-			callback: async () => {
-				const startTime = performance.now(); // start time
+		// Initialize update citations class
+		this.updateCitations = new UpdateCitations(
+			this.app,
+			this.settings
+		);
 
-				const { jsonFile, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
-				if (!jsonFile || !folder) return;
-
-				// parse json Data and files
-				const jsonContents = await this.app.vault.cachedRead(jsonFile);
-				const jsonData = JSON.parse(jsonContents);
-				const files = new Map(folder.children.map(file => [file.name, file])); // マップ化
-				let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
-				let fileCount: number = 0;
-
-				// progress notice
-				let notice = new Notice(`0 file(s) updated.`, 0);
-				const intervalId = setInterval(() => {
-					notice.setMessage(`${fileCount} file(s) updated.`);
-				}, 200);
-
-				// check json file
-				for (let i = 0; i < jsonData.length; i++) {
-					const citekey = jsonData[i]?.['citation-key'];
-					if (!validateCitekey(citekey)) continue; // `citation-key` がないデータやおかしいデータはskip
-					const targetFileName = "@" + citekey + ".md";
-					const targetFile = files.get(targetFileName); // O(1) の高速検索
-
-					// update frontmatter
-					if (targetFile && targetFile instanceof TFile) {
-						await this.updateFrontMatter(targetFile,jsonData[i]);
-						await updateContent(
-							this.app,
-							targetFile,
-							templateContent,
-							this.settings.includeAbstract ? jsonData[i]['abstract'] : ""
-						);
-						fileCount++;
-					}
-				}
-				// stop timer
-				clearInterval(intervalId);
-				const endTime = performance.now(); // end time
-				const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
-				notice.setMessage(`${fileCount} file(s) updated.\nTime taken: ${elapsedTime} seconds`);
-				// hide notice after 3 seconds
-				setTimeout(() => {
-					notice.hide();
-				}, 3000);
-			}
-		});
+		// Register update commands
+		this.updateCitations.registerCommands(this);
 
 		this.addCommand({
 			id: 'add-citations',
@@ -95,7 +54,7 @@ export default class SimpleCitations extends Plugin {
 					// if nonexisting, create file
 					if (!targetFile){
 						const newFile = await this.app.vault.create(`${folder.path}/${targetFileName}`,"");
-						await this.updateFrontMatter(newFile,jsonData[i]);
+						await updateFrontMatter(this.app, this.settings, newFile, jsonData[i]);
 						await updateContent(
 							this.app,
 							newFile,
@@ -235,6 +194,11 @@ export default class SimpleCitations extends Plugin {
 			autoAddCitations(this.app, this.settings, file as TFile);
 		}));
 
+		// auto update citations on file open
+		this.registerEvent(this.app.workspace.on('file-open', file => {
+			this.updateCitations.autoUpdateCitations(file);
+		}));
+
 		// auto execute add citations command at start
 		this.app.workspace.onLayoutReady(() => {
 			autoAddCitations(this.app, this.settings, this.app.vault.getFileByPath(normalizePath(this.settings.jsonPath)) as TFile);
@@ -253,89 +217,4 @@ export default class SimpleCitations extends Plugin {
 		await this.saveData(this.settings);
 	}
 
-	private async updateFrontMatter(targetFile: TFile, item: any) {
-		await this.app.fileManager.processFrontMatter(targetFile, (fm) => {
-			fm.aliases = [];
-			if (!Array.isArray(fm.tags)) {
-				fm.tags = fm.tags ? [fm.tags] : [];
-			}			
-			fm.title = item['title'];
-			if (item['author'] && Array.isArray(item['author'])) {
-				fm.authors = Array.from(new Set(
-					item['author'].map(author =>
-						(author.literal || `${author.given ?? ""} ${author.family ?? ""}`).trim()
-					)
-				));				
-			}
-			if (item['issued'] && Array.isArray(item['issued']['date-parts']) && item['issued']['date-parts'][0] && !isNaN(item['issued']['date-parts'][0][0])) {
-				fm.year = Number(item['issued']['date-parts'][0][0]);
-			}
-			fm.journal = item['container-title'];
-			fm.doi = item['DOI'] ? `https://doi.org/${item['DOI']}` : "";
-			fm.zotero = "zotero://select/items/@" + item['id'];
-			if (fm.authors && fm.authors.length > 0 && fm.journal && fm.year) {
-				fm.aliases.push(`${fm.authors[0]}. ${fm.journal}. ${fm.year}`);
-			}
-			fm.aliases.push(item['title']);
-			// add or remove author tag
-			if (fm.authors && fm.authors.length > 0) {
-				let authorTag = fm.authors[0]
-					.replace(/[&:;,'"\\?!<>|()\[\]{}\.\s]/g, '_') // スペース & 記号をすべてアンダースコアに
-					.replace(/_+/g, '_')  // 連続するアンダースコアを1つに圧縮
-					.replace(/^_+|_+$/g, ''); // 先頭・末尾のアンダースコアを削除
-				authorTag = `author/${authorTag}`;
-				if (this.settings.includeAuthorTag) {
-					if (!fm.tags.includes(authorTag)) {
-						fm.tags.push(authorTag);
-					}
-				} else {
-					const index = fm.tags.indexOf(authorTag);
-					if (index > -1) {
-						fm.tags.splice(index, 1);
-					}
-				}
-			}
-			// add or remove journal tag
-			if (fm.journal) {
-				let journalTag = fm.journal
-					.replace(/[&:;,'"\\?!<>|()\[\]{}\.\s]/g, '_') // スペース & 記号をすべてアンダースコアに
-					.replace(/_+/g, '_')  // 連続するアンダースコアを1つに圧縮
-					.replace(/^_+|_+$/g, ''); // 先頭・末尾のアンダースコアを削除
-				journalTag = `journal/${journalTag}`;
-				if (this.settings.includeJournalTag) {
-					if (!fm.tags.includes(journalTag)) {
-						fm.tags.push(journalTag);
-					}
-				} else {
-					const index = fm.tags.indexOf(journalTag);
-					if (index > -1) {
-						fm.tags.splice(index, 1);
-					}
-				}
-			}
-
-			// add optional fields
-			if (this.settings.optionalFields) {
-				const optionalFields = this.settings.optionalFields
-					.split("\n")
-					.map(f => f.trim())
-					.filter(Boolean);
-				for (const field of optionalFields) {
-					if (item[field] !== undefined) {
-						const value = item[field];
-						if (
-							typeof value === "string" ||
-							typeof value === "number" ||
-							(Array.isArray(value) && value.every(v =>
-								typeof v === "string" || typeof v === "number"
-							))
-						) {
-							fm[field] = value;
-						}
-						// それ以外（オブジェクト等）は無視
-					}
-				}
-			}
-		});
-	}
 }

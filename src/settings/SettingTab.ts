@@ -67,6 +67,15 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.autoAddCitations = value;
 					await this.plugin.saveSettings();
 				}));
+		new Setting(containerEl)
+			.setName('Auto update citations')
+			.setDesc('When enabled, automatically updates citation notes when opened.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.autoUpdateCitations)
+				.onChange(async (value) => {
+					this.plugin.settings.autoUpdateCitations = value;
+					await this.plugin.saveSettings();
+				}));
 		containerEl.createEl('h2', { text: 'Additional Properties' });
 		new Setting(containerEl)
 			.setName('Include author tag')

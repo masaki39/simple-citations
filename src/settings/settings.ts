@@ -7,6 +7,7 @@ export interface SimpleCitationsSettings {
 	includeAbstract: boolean;
 	templatePath: string;
 	autoAddCitations: boolean;
+	autoUpdateCitations: boolean;
 	jsonUpdatedTime: number;
 	inputPandocPath: string;
 	pandocOutputPath: string;
@@ -22,6 +23,7 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	includeAbstract: false,
 	templatePath: "",
 	autoAddCitations: false,
+	autoUpdateCitations: false,
 	jsonUpdatedTime: new Date().getTime(),
 	inputPandocPath: "",
 	pandocOutputPath: "",
