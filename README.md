@@ -1,5 +1,7 @@
 # Simple Citations
 
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/masaki39/simple-citations/total)
+
 This is an Obsidian plugin that reinforces the workflow between Zotero and Obsidian. It enables the importation of literature notes from Zotero, and use them not only as the knowledge base but also the references for your writing. Requiring the installation of [Better Bibtex for Zotero](https://retorque.re/zotero-better-bibtex/) and [Pandoc](https://pandoc.org).
 
 ## Features
