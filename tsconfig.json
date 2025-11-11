@@ -10,7 +10,12 @@
     "moduleResolution": "node",
     "importHelpers": true,
     "isolatedModules": true,
-	"strictNullChecks": true,
+    "strictNullChecks": true,
+    "esModuleInterop": true,
+    "types": [
+      "node",
+      "jest"
+    ],
     "lib": [
       "DOM",
       "ES5",
