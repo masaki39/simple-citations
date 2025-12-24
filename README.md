@@ -87,7 +87,7 @@ Better Bibtex for Zotero has the function to add optional fields to the bibliogr
 
 Reference for the script. → [Scripting :: Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/exporting/scripting/index.html)
 
-#### 📌 Examples
+#### Postscript examples
 
 <details>
 <summary>Zotero itemkey</summary>
