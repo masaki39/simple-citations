@@ -65,7 +65,7 @@ The result file(docx) is as follows:
     - `Copy missing note links`
       - This command identifies and copies links to literature notes that are not included in the JSON file.
 
-> [!warning] Invalid Citekey Characters
+> [!warning]
 > Citekeys containing `#` `^` `[` `]` `|` `\` `/` `:` will be skipped as these characters are not allowed in Obsidian filenames. Check the console log if items are missing.
 
 ## ➕ Additional options
