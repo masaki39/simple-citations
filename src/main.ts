@@ -8,6 +8,7 @@ import { updateContent } from './utils/updateContent';
 import { updateFrontMatter } from './utils/updateFrontMatter';
 import { checkRequiredFiles } from './utils/checkRequiredFiles';
 import { validateCitekey } from './utils/validateCitekey';
+import { convertToPandocFormat } from './utils/convertToPandocFormat';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -104,10 +105,7 @@ export default class SimpleCitations extends Plugin {
 				const content = await this.app.vault.read(activeFile);
 
 				// replace
-				let newContent = await content.replace(/\[\[(.*?)\|.*?\]\]/g, "[[$1]]"); // fix aliases 
-				newContent = newContent.replace(/\[\[@(.*?)\]\]/g, "[@$1]"); // convert to pandoc style
-				newContent = newContent.replace(/\](\s*?)\[@/g, ";@"); // connect citations
-				newContent = newContent.replace(/(\.)\s*?(\[@.*?\])/g, " $2$1 "); // insert before period with preceding space
+				const newContent = convertToPandocFormat(content);
 
 				// modify file content
 				await this.app.vault.modify(activeFile, newContent);
@@ -155,6 +153,22 @@ export default class SimpleCitations extends Plugin {
 					// Ensure the file content is always restored after pandoc process is closed
 					await this.app.vault.modify(activeFile, content);
 				}
+			}
+		});
+
+		this.addCommand({
+			id: 'convert-to-pandoc-format',
+			name: 'Convert to Pandoc format',
+			callback: async () => {
+				const activeFile = this.app.workspace.getActiveFile();
+				if (!activeFile) {
+					new Notice('No active file.');
+					return;
+				}
+				const content = await this.app.vault.read(activeFile);
+				const newContent = convertToPandocFormat(content);
+				await this.app.vault.modify(activeFile, newContent);
+				new Notice('Converted to Pandoc format.');
 			}
 		});
 
