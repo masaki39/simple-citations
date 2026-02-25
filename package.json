@@ -1,6 +1,6 @@
 {
 	"name": "simple-citations",
-	"version": "1.4.4",
+	"version": "1.4.5",
 	"description": "Add & update simple literature notes from Zotero.",
 	"main": "main.js",
 	"scripts": {
