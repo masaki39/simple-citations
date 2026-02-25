@@ -62,6 +62,7 @@ The result file(docx) is as follows:
     - `Update literature note`
     - `Update literature note (active file)`
     - `Pandoc Citeproc Execution (docx)`
+    - `Conver to Pandoc format`
     - `Copy missing note links`
       - This command identifies and copies links to literature notes that are not included in the JSON file.
 
