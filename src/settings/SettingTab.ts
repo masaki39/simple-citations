@@ -1,4 +1,4 @@
-import { App, PluginSettingTab, Setting, setIcon } from "obsidian";
+import { App, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
 import SimpleCitations from "../main";
 import { updateSettingJsonStatus, updateSettingFolderStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
 import { JsonFileSuggest } from "./FileSuggest";
@@ -16,7 +16,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		containerEl.createEl('h2', { text: 'Basic Settings' });
+		new Setting(containerEl).setName('Basic Settings').setHeading();
 
 		// Bibliography file paths — single setting block
 		const bibSetting = new Setting(containerEl)
@@ -209,7 +209,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.autoUpdateCitations = value;
 					await this.plugin.saveSettings();
 				}));
-		containerEl.createEl('h2', { text: 'Additional Properties' });
+		new Setting(containerEl).setName('Additional Properties').setHeading();
 		new Setting(containerEl)
 			.setName('Include author tag')
 			.setDesc('When enabled, adds a tag with the first author\'s name.')
@@ -248,7 +248,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		optionalFieldsSetting.settingEl.addClass('simple-citations-mobile-wrap');
-		containerEl.createEl('h2', { text: 'Additional Content'});
+		new Setting(containerEl).setName('Additional Content').setHeading();
 		new Setting(containerEl)
 			.setName('Include abstract to content')
 			.setDesc('When enabled, adds the abstract to the top of each literature note.')
@@ -280,7 +280,12 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 						}
 					});
 			});
-		containerEl.createEl('h2', { text: 'Pandoc Settings' });
+		const pandocHeading = new Setting(containerEl).setName('Pandoc Settings').setHeading();
+		if (Platform.isMobile) {
+			const descEl = pandocHeading.descEl;
+			descEl.createSpan({ text: 'Note: ', cls: 'simple-citations-note-label' });
+			descEl.appendText('Pandoc is only available on desktop.');
+		}
 		new Setting(containerEl)
 			.setName('Pandoc path')
 			.setDesc('On Mac/Linux use the output of `which pandoc` in terminal; on Windows use the output of `where pandoc` in cmd.')

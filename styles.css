@@ -92,6 +92,11 @@
 	width: 100% !important;
 } 
 
+.simple-citations-note-label {
+	color: var(--text-error);
+	font-weight: var(--font-semibold);
+}
+
 .simple-citations-bib-empty {
 	color: var(--text-muted);
 	font-style: italic;
