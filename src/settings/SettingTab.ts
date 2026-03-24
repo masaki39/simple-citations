@@ -230,7 +230,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				}));
 		new Setting(containerEl)
 			.setName('Include collections')
-			.setDesc('When enabled, adds collections from bibliography files to the "collections" property. Collections from multiple files are merged and deduplicated.')
+			.setDesc('When enabled, adds collections to the "collections" property. Each collection is prefixed with its bibliography name (e.g. "My Library: Folder"). Entries in multiple files have their collections merged and deduplicated. Entries without collections show the bibliography name alone.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.includeCollections)
 				.onChange(async (value) => {
