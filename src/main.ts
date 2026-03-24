@@ -1,4 +1,4 @@
-import { Notice, Plugin, TFile, normalizePath } from 'obsidian';
+import { Notice, Plugin, TFile, normalizePath, Platform } from 'obsidian';
 import { spawn } from 'child_process';
 import { DEFAULT_SETTINGS, SimpleCitationsSettings } from './settings/settings';
 import { SimpleCitationsSettingTab } from './settings/SettingTab';
@@ -103,7 +103,7 @@ export default class SimpleCitations extends Plugin {
 			}
 		});
 
-		this.addCommand({
+		if (Platform.isDesktop) this.addCommand({
 			id: 'execute-pandoc',
 			name: 'Pandoc Citeproc Execution (docx)',
 			callback: async () => {
