@@ -88,14 +88,9 @@
 	flex-wrap: wrap;
 }
 
-.is-mobile .simple-citations-mobile-wrap .setting-item-control {
-	width: 100%;
-	margin-top: 8px;
-}
-
 .is-mobile .simple-citations-mobile-wrap .setting-item-control textarea {
 	width: 100% !important;
-}
+} 
 
 .simple-citations-bib-empty {
 	color: var(--text-muted);
