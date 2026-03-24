@@ -237,7 +237,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.includeCollections = value;
 					await this.plugin.saveSettings();
 				}));
-		new Setting(containerEl)
+		const optionalFieldsSetting = new Setting(containerEl)
 			.setName('Optional fields')
 			.setDesc('Set optional fields from JSON. (Separate by line breaks, 1st level only)')
 			.addTextArea(textArea => textArea
@@ -247,6 +247,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.optionalFields = value;
 					await this.plugin.saveSettings();
 				}));
+		optionalFieldsSetting.settingEl.addClass('simple-citations-mobile-wrap');
 		containerEl.createEl('h2', { text: 'Additional Content'});
 		new Setting(containerEl)
 			.setName('Include abstract to content')
@@ -300,7 +301,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.pandocOutputPath = value;
 					await this.plugin.saveSettings();
 				}));
-		new Setting(containerEl)
+		const pandocArgsSetting = new Setting(containerEl)
 			.setName('Extra Pandoc arguments')
 			.setDesc('Add extra command line arguments for pandoc. Absolute path only. New lines are turned into spaces. Citeproc and bibliography are automatically added.')
 			.addTextArea(textArea => {
@@ -314,6 +315,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				textArea.inputEl.style.height = '200px';
 				textArea.inputEl.style.width = '200px';
 			});
+		pandocArgsSetting.settingEl.addClass('simple-citations-mobile-wrap');
 
 	}
 }
