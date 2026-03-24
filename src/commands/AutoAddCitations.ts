@@ -5,13 +5,20 @@ import { App, TFile, normalizePath } from "obsidian";
 import { SimpleCitationsSettings } from "../settings/settings";
 
 export function autoAddCitations(app: App, settings: SimpleCitationsSettings, file: TFile) {
-	if (settings.autoAddCitations) {
-		const normalizedJsonPath = normalizePath(settings.jsonPath);
-		if (file instanceof TFile && file.path === normalizedJsonPath) {
-			if (settings.jsonUpdatedTime === new Date(file.stat.mtime).getTime()) {
+	if (!settings.autoAddCitations) return;
+	if (!(file instanceof TFile)) return;
+
+	// Check if the modified file matches any of the configured json paths
+	for (const path of settings.jsonPaths) {
+		if (!path) continue;
+		const normalizedPath = normalizePath(path);
+		if (file.path === normalizedPath) {
+			const lastKnownTime = settings.jsonUpdatedTimes[file.path] ?? 0;
+			if (lastKnownTime === new Date(file.stat.mtime).getTime()) {
 				return;
 			}
 			(app as any).commands.executeCommandById('simple-citations:add-citations');
+			return;
 		}
 	}
 }

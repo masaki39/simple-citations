@@ -1,8 +1,93 @@
-/*
+.simple-citations-bib-setting {
+	flex-wrap: wrap;
+}
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.simple-citations-bib-list {
+	flex-basis: 100%;
+}
 
-If your plugin does not need CSS, delete this file.
+.simple-citations-bib-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 0;
+	border-top: 1px solid var(--background-modifier-border);
+}
 
-*/
+.simple-citations-bib-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.simple-citations-bib-name {
+	display: flex;
+	align-items: center;
+	font-size: var(--font-ui-medium);
+	color: var(--text-accent);
+	word-break: break-all;
+	line-height: 1.4;
+}
+
+.simple-citations-bib-desc {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-top: 2px;
+}
+
+.simple-citations-status {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	margin-right: 6px;
+}
+
+.simple-citations-status svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.simple-citations-status.is-valid {
+	color: var(--text-success);
+}
+
+.simple-citations-status.is-invalid {
+	color: var(--text-error);
+}
+
+.simple-citations-bib-buttons {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+	margin-left: 12px;
+}
+
+
+.simple-citations-bib-input {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	line-height: 1.4;
+}
+
+.simple-citations-bib-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-top: 2px;
+	word-break: break-all;
+}
+
+.simple-citations-bib-input-path {
+	margin-top: 6px;
+}
+
+.simple-citations-bib-empty {
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 10px 0;
+	margin: 0;
+	border-top: 1px solid var(--background-modifier-border);
+}

@@ -130,14 +130,15 @@ if (Translator.BetterCSLJSON) {
   function path(key) {
     const coll = Translator.collections[key]
     if (!coll) return ''
-    if (!coll.parent) {return `${coll.name}`}
-    else {return `${path(coll.parent)}/${coll.name}`}
+    if (!coll.parent) return coll.name
+    return `${path(coll.parent)}/${coll.name}`
   }
 
   let collections = [];
 
   zotero.collections.forEach((key) => {
-    collections.push(path(key))
+    const p = path(key)
+    if (p) collections.push(p)
   });
 
   csl.collections = collections;

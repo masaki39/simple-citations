@@ -1,6 +1,7 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, PluginSettingTab, Setting, setIcon } from "obsidian";
 import SimpleCitations from "../main";
-import { updateSettingFolderStatus, updateSettingJsonStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
+import { updateSettingJsonStatus, updateSettingFolderStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
+import { JsonFileSuggest } from "./FileSuggest";
 
 export class SimpleCitationsSettingTab extends PluginSettingTab {
 	plugin: SimpleCitations;
@@ -16,27 +17,158 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		containerEl.createEl('h2', { text: 'Basic Settings' });
-		new Setting(containerEl)
-			.setName('Set bibliography file path')
-			.setDesc('Better CSL JSON')
-			.addText(text => {
-				const container = text.inputEl.parentElement;
-				let statusSpan: HTMLElement | null = null;
-				if (container) {
-					statusSpan = container.insertBefore(document.createElement('span'), text.inputEl);
-					updateSettingJsonStatus(this.app, statusSpan, this.plugin.settings.jsonPath);
-				}
-				return text
-					.setPlaceholder('Enter Relative Path')
-					.setValue(this.plugin.settings.jsonPath)
-					.onChange(async (value) => {
-						this.plugin.settings.jsonPath = value;
-						await this.plugin.saveSettings();
-						if (container && statusSpan) {
-							updateSettingJsonStatus(this.app, statusSpan, value);
-						}
-					});
+
+		// Bibliography file paths — single setting block
+		const bibSetting = new Setting(containerEl)
+			.setName('Bibliography file paths')
+			.setDesc('Better CSL JSON files. Earlier entries have higher priority when duplicate citation keys exist.')
+			.addButton(button => button
+				.setButtonText('+ Add file')
+				.setCta()
+				.onClick(async () => {
+					this.plugin.settings.jsonPaths.push('');
+					this.plugin.settings.jsonNames.push('');
+					await this.plugin.saveSettings();
+					this.display();
+				}));
+
+		bibSetting.settingEl.addClass('simple-citations-bib-setting');
+		const bibListEl = bibSetting.settingEl.createDiv({ cls: 'simple-citations-bib-list' });
+		const paths = this.plugin.settings.jsonPaths;
+
+		if (paths.length === 0) {
+			bibListEl.createEl('p', {
+				text: 'No bibliography files added yet.',
+				cls: 'simple-citations-bib-empty',
 			});
+		}
+
+		for (let i = 0; i < paths.length; i++) {
+			const idx = i;
+			const rowEl = bibListEl.createDiv({ cls: 'simple-citations-bib-row' });
+
+			// Left: info
+			const infoEl = rowEl.createDiv({ cls: 'simple-citations-bib-info' });
+
+			const defaultName = paths[idx]?.split('/').pop()?.replace(/\.json$/, '') || '';
+			const displayName = this.plugin.settings.jsonNames[idx]?.trim() || defaultName;
+
+			const showDisplay = () => {
+				infoEl.empty();
+				// Main name (large)
+				const nameRow = infoEl.createDiv({ cls: 'simple-citations-bib-name' });
+				const statusSpan = nameRow.createSpan();
+				updateSettingJsonStatus(this.app, statusSpan, paths[idx]);
+				nameRow.createSpan({ text: displayName || '(unnamed)' });
+				// Path as subtitle
+				infoEl.createDiv({
+					text: paths[idx] || '(empty path)',
+					cls: 'simple-citations-bib-path',
+				});
+			};
+
+			const showEditor = () => {
+				infoEl.empty();
+				// Name input
+				const nameInput = infoEl.createEl('input', { type: 'text', cls: 'simple-citations-bib-input' });
+				nameInput.value = this.plugin.settings.jsonNames[idx] || '';
+				nameInput.placeholder = `Display name (default: ${defaultName})`;
+
+				// Path input with file suggest
+				const pathInput = infoEl.createEl('input', { type: 'text', cls: 'simple-citations-bib-input simple-citations-bib-input-path' });
+				pathInput.value = paths[idx];
+				pathInput.placeholder = 'Search for a .json file';
+				new JsonFileSuggest(this.app, pathInput);
+
+				// Focus the first non-empty field, or path if new
+				if (!paths[idx]) {
+					pathInput.focus();
+				} else {
+					nameInput.focus();
+				}
+
+				const save = async () => {
+					// Delay to let the other input's blur not race
+					await new Promise(r => setTimeout(r, 100));
+					if (!pathInput.value && !document.activeElement?.closest('.simple-citations-bib-row')) {
+						// Remove if path is empty and focus left the row
+						this.plugin.settings.jsonPaths.splice(idx, 1);
+						this.plugin.settings.jsonNames.splice(idx, 1);
+						await this.plugin.saveSettings();
+						this.display();
+						return;
+					}
+					this.plugin.settings.jsonPaths[idx] = pathInput.value;
+					this.plugin.settings.jsonNames[idx] = nameInput.value;
+					await this.plugin.saveSettings();
+					// Only re-render if focus left this row entirely
+					if (!document.activeElement?.closest('.simple-citations-bib-row')) {
+						this.display();
+					}
+				};
+
+				nameInput.addEventListener('blur', save);
+				pathInput.addEventListener('blur', save);
+				nameInput.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter') { pathInput.focus(); }
+				});
+				pathInput.addEventListener('keydown', (e) => {
+					if (e.key === 'Enter') { pathInput.blur(); }
+				});
+			};
+
+			// Auto-open editor for empty paths, otherwise show display
+			if (!paths[i]) {
+				showEditor();
+			} else {
+				showDisplay();
+			}
+
+			// Right: buttons
+			const btnGroup = rowEl.createDiv({ cls: 'simple-citations-bib-buttons' });
+
+			// Move up
+			if (i > 0) {
+				const upBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Move up' } });
+				setIcon(upBtn, 'arrow-up');
+				upBtn.addEventListener('click', async () => {
+					const names = this.plugin.settings.jsonNames;
+					[paths[idx - 1], paths[idx]] = [paths[idx], paths[idx - 1]];
+					[names[idx - 1], names[idx]] = [names[idx], names[idx - 1]];
+					await this.plugin.saveSettings();
+					this.display();
+				});
+			}
+
+			// Move down
+			if (i < paths.length - 1) {
+				const downBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Move down' } });
+				setIcon(downBtn, 'arrow-down');
+				downBtn.addEventListener('click', async () => {
+					const names = this.plugin.settings.jsonNames;
+					[paths[idx], paths[idx + 1]] = [paths[idx + 1], paths[idx]];
+					[names[idx], names[idx + 1]] = [names[idx + 1], names[idx]];
+					await this.plugin.saveSettings();
+					this.display();
+				});
+			}
+
+			// Edit
+			const editBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Edit path' } });
+			setIcon(editBtn, 'pencil');
+			editBtn.addEventListener('click', () => showEditor());
+
+			// Delete
+			const delBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Remove' } });
+			setIcon(delBtn, 'x');
+			delBtn.addEventListener('click', async () => {
+				this.plugin.settings.jsonPaths.splice(idx, 1);
+				this.plugin.settings.jsonNames.splice(idx, 1);
+				await this.plugin.saveSettings();
+				this.display();
+			});
+		}
+
 		new Setting(containerEl)
 			.setName('Set literature note folder path')
 			.setDesc('Folder to save literature notes. Default: root folder.')
@@ -45,6 +177,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				let statusSpan: HTMLElement | null = null;
 				if (container) {
 					statusSpan = container.insertBefore(document.createElement('span'), text.inputEl);
+
 					updateSettingFolderStatus(this.app, statusSpan, this.plugin.settings.folderPath);
 				}
 				return text
@@ -60,7 +193,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 			});
 		new Setting(containerEl)
 			.setName('Auto add citations')
-			.setDesc('When enabled, execute add commands automatically when the bibliography file is updated.')
+			.setDesc('When enabled, execute add commands automatically when any bibliography file is updated.')
 			.addToggle(toggle => toggle
 				.setValue(this.plugin.settings.autoAddCitations)
 				.onChange(async (value) => {
@@ -96,6 +229,15 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		new Setting(containerEl)
+			.setName('Include collections')
+			.setDesc('When enabled, adds collections from bibliography files to the "collections" property. Collections from multiple files are merged and deduplicated.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.includeCollections)
+				.onChange(async (value) => {
+					this.plugin.settings.includeCollections = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
 			.setName('Optional fields')
 			.setDesc('Set optional fields from JSON. (Separate by line breaks, 1st level only)')
 			.addTextArea(textArea => textArea
@@ -123,6 +265,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				let statusSpan: HTMLElement | null = null;
 				if (container) {
 					statusSpan = container.insertBefore(document.createElement('span'), text.inputEl);
+
 					updateSettingTemplateStatus(this.app, statusSpan, this.plugin.settings.templatePath);
 				}
 				return text
@@ -171,6 +314,6 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				textArea.inputEl.style.height = '200px';
 				textArea.inputEl.style.width = '200px';
 			});
-				
+
 	}
 }
