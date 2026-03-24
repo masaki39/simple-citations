@@ -31,8 +31,8 @@ export async function updateFrontMatter(
 				? item['_source_files'][0]
 				: item['_source_files'];
 		}
-		if (settings.includeCollections && Array.isArray(item['collections'])) {
-			fm.collections = item['collections'];
+		if (settings.includeCollections && Array.isArray(item['_collections']) && item['_collections'].length > 0) {
+			fm.collections = item['_collections'];
 		} else {
 			delete fm.collections;
 		}
