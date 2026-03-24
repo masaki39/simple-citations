@@ -61,10 +61,9 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				updateSettingJsonStatus(this.app, statusSpan, paths[idx]);
 				nameRow.createSpan({ text: displayName || '(unnamed)' });
 				// Path as subtitle
-				infoEl.createDiv({
-					text: paths[idx] || '(empty path)',
-					cls: 'simple-citations-bib-path',
-				});
+				const pathDiv = infoEl.createDiv({ cls: 'simple-citations-bib-path' });
+				pathDiv.createSpan({ text: 'File path: ', cls: 'simple-citations-bib-path-label' });
+				pathDiv.createSpan({ text: paths[idx] || '(empty path)' });
 			};
 
 			const showEditor = () => {
