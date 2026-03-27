@@ -200,6 +200,15 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		new Setting(containerEl)
+			.setName('Auto sync citations')
+			.setDesc('When enabled, automatically adds and updates all literature notes when any bibliography file is updated.')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.autoSyncCitations)
+				.onChange(async (value) => {
+					this.plugin.settings.autoSyncCitations = value;
+					await this.plugin.saveSettings();
+				}));
+		new Setting(containerEl)
 			.setName('Auto update citations')
 			.setDesc('When enabled, automatically updates citation notes when opened.')
 			.addToggle(toggle => toggle
@@ -228,15 +237,15 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				}));
 		new Setting(containerEl)
-			.setName('Include collections')
-			.setDesc('When enabled, adds collections to the "collections" property. Each collection is prefixed with its bibliography name (e.g. "My Library: Folder"). Entries in multiple files have their collections merged and deduplicated. Entries without collections show the bibliography name alone.')
+			.setName('Include bibliography')
+			.setDesc('When enabled, adds a "bibliography" property to each literature note as a list, indicating which bibliography file(s) the citation was found in (e.g. ["My Library"]). If the entry appears in multiple files, all sources are listed.')
 			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.includeCollections)
+				.setValue(this.plugin.settings.includeBibliography)
 				.onChange(async (value) => {
-					this.plugin.settings.includeCollections = value;
+					this.plugin.settings.includeBibliography = value;
 					await this.plugin.saveSettings();
 				}));
-		const optionalFieldsSetting = new Setting(containerEl)
+const optionalFieldsSetting = new Setting(containerEl)
 			.setName('Optional fields')
 			.setDesc('Set optional fields from JSON. (Separate by line breaks, 1st level only)')
 			.addTextArea(textArea => textArea

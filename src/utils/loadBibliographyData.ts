@@ -35,30 +35,15 @@ export async function loadBibliographyData(app: App, jsonPaths: string[], jsonNa
 			const key = entry?.['citation-key'];
 			if (!key) continue;
 
-			// Prefix collections with bibliography name; if no collections, use bibName alone
-			const rawCollections = Array.isArray(entry['collections'])
-				? entry['collections'].filter((c: string) => c)
-				: [];
-			const prefixedCollections = rawCollections.length > 0
-				? rawCollections.map((c: string) => `${bibName}: ${c}`)
-				: [bibName];
-
 			const existing = seenKeys.get(key);
 			if (!existing) {
 				// First occurrence — use this entry's data (higher priority)
 				entry['_source_files'] = [bibName];
-				entry['_collections'] = [...prefixedCollections];
 				seenKeys.set(key, entry);
 				mergedData.push(entry);
 			} else {
-				// Duplicate — append bibliography name and merge collections
+				// Duplicate — append bibliography name
 				existing['_source_files'].push(bibName);
-				const existingSet = new Set(existing['_collections'] || []);
-				for (const c of prefixedCollections) {
-					if (!existingSet.has(c)) {
-						existing['_collections'].push(c);
-					}
-				}
 			}
 		}
 	}

@@ -5,9 +5,15 @@ export async function updateFrontMatter(
 	app: App,
 	settings: SimpleCitationsSettings,
 	targetFile: TFile,
-	item: any
+	item: any,
+	fullSync: boolean = false // Dangerous option to clear all existing front matter fields before updating. Use with caution!
 ) {
 	await app.fileManager.processFrontMatter(targetFile, (fm) => {
+		if (fullSync) {
+			for (const key of Object.keys(fm)) {
+				delete fm[key];
+			}
+		}
 		fm.aliases = [];
 		if (!Array.isArray(fm.tags)) {
 			fm.tags = fm.tags ? [fm.tags] : [];
@@ -26,15 +32,10 @@ export async function updateFrontMatter(
 		fm.journal = item['container-title'];
 		fm.doi = item['DOI'] ? `https://doi.org/${item['DOI']}` : "";
 		fm.zotero = "zotero://select/items/@" + item['id'];
-		if (item['_source_files'] && Array.isArray(item['_source_files'])) {
-			fm.bibliography = item['_source_files'].length === 1
-				? item['_source_files'][0]
-				: item['_source_files'];
-		}
-		if (settings.includeCollections && Array.isArray(item['_collections']) && item['_collections'].length > 0) {
-			fm.collections = item['_collections'];
+		if (settings.includeBibliography && item['_source_files'] && Array.isArray(item['_source_files'])) {
+			fm.bibliography = item['_source_files'];
 		} else {
-			delete fm.collections;
+			delete fm.bibliography;
 		}
 		if (fm.authors && fm.authors.length > 0 && fm.journal && fm.year) {
 			fm.aliases.push(`${fm.authors[0]}. ${fm.journal}. ${fm.year}`);

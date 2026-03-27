@@ -2,106 +2,30 @@ import { Notice, Plugin, TFile, normalizePath, Platform } from 'obsidian';
 import { spawn } from 'child_process';
 import { DEFAULT_SETTINGS, SimpleCitationsSettings } from './settings/settings';
 import { SimpleCitationsSettingTab } from './settings/SettingTab';
-import { autoAddCitations } from './commands/AutoAddCitations';
+import { autoAddCitations, autoSyncCitations } from './commands/autoCitations';
+import { AddCitations } from './commands/addCitations';
 import { UpdateCitations } from './commands/updateCitations';
-import { updateContent } from './utils/updateContent';
-import { updateFrontMatter } from './utils/updateFrontMatter';
-import { checkRequiredFiles } from './utils/checkRequiredFiles';
-import { validateCitekey } from './utils/validateCitekey';
+import { SyncCitations } from './commands/syncCitations';
 import { convertToPandocFormat } from './utils/convertToPandocFormat';
 import { loadBibliographyData } from './utils/loadBibliographyData';
+import { checkRequiredFiles } from './utils/checkRequiredFiles';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
-	private updateCitations: UpdateCitations;
+	private addCitations!: AddCitations;
+	private updateCitations!: UpdateCitations;
+	private syncCitations!: SyncCitations;
 
 	async onload() {
 		await this.loadSettings();
 
-		// Initialize update citations class
-		this.updateCitations = new UpdateCitations(
-			this.app,
-			this.settings
-		);
+		this.addCitations = new AddCitations(this.app, this.settings, () => this.saveSettings());
+		this.updateCitations = new UpdateCitations(this.app, this.settings);
+		this.syncCitations = new SyncCitations(this.app, this.addCitations, this.updateCitations);
 
-		// Register update commands
+		this.addCitations.registerCommands(this);
 		this.updateCitations.registerCommands(this);
-
-		this.addCommand({
-			id: 'add-citations',
-			name: 'Add literature notes',
-			callback: async () => {
-				const startTime = performance.now(); // start time
-
-				const { jsonFiles, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
-				if (jsonFiles.length === 0 || !folder) return;
-
-				// load and merge bibliography data
-				const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
-				const files = new Map(folder.children.map(file => [file.name, file]));
-				let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
-				let fileCount: number = 0;
-
-				let notice: Notice | null = null;
-				let intervalId: NodeJS.Timeout | null = null;
-
-				// check json file
-				for (let i = 0; i < mergedData.length; i++) {
-					const citekey = mergedData[i]?.['citation-key'];
-					if (!validateCitekey(citekey)) continue;
-					const targetFileName = "@" + citekey + ".md";
-					const targetFile = files.get(targetFileName);
-
-					// if nonexisting, create file
-					if (!targetFile){
-						const newFile = await this.app.vault.create(`${folder.path}/${targetFileName}`,"");
-						await updateFrontMatter(this.app, this.settings, newFile, mergedData[i]);
-						await updateContent(
-							this.app,
-							newFile,
-							templateContent,
-							this.settings.includeAbstract ? mergedData[i]['abstract'] : ""
-						);
-						fileCount ++;
-						if (fileCount === 1) {
-							notice = new Notice(`${fileCount} file(s) added.`, 0);
-							intervalId = setInterval(() => {
-								notice?.setMessage(`${fileCount} file(s) added.`);
-							}, 200);
-						}
-					}
-				}
-				// stop timer
-				if (intervalId) {
-					clearInterval(intervalId);
-				}
-				if (notice) {
-					const endTime = performance.now(); // end time
-					const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
-					notice.setMessage(`${fileCount} file(s) added.\nTime taken: ${elapsedTime} seconds`);
-					// hide notice after 3 seconds
-					setTimeout(() => {
-						notice?.hide();
-					}, 3000);
-				}
-
-				// update json updated times for all files
-				for (const jsonFile of jsonFiles) {
-					this.settings.jsonUpdatedTimes[jsonFile.path] = new Date(jsonFile.stat.mtime).getTime();
-				}
-				this.saveSettings();
-				console.log("Add literature notes completed.");
-			}
-		});
-
-		this.addCommand({
-			id: 'sync-citations',
-			name: 'Sync literature notes',
-			callback: async () => {
-				await (this.app as any).commands.executeCommandById('simple-citations:add-citations');
-				await (this.app as any).commands.executeCommandById('simple-citations:update-citations');
-			}
-		});
+		this.syncCitations.registerCommands(this);
 
 		if (Platform.isDesktop) this.addCommand({
 			id: 'execute-pandoc',
@@ -220,9 +144,10 @@ export default class SimpleCitations extends Plugin {
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SimpleCitationsSettingTab(this.app, this));
 
-		// watch json files for auto-add
+		// watch json files for auto-add / auto-sync
 		this.registerEvent(this.app.vault.on('modify', file => {
 			autoAddCitations(this.app, this.settings, file as TFile);
+			autoSyncCitations(this.app, this.settings, file as TFile);
 		}));
 
 		// auto update citations on file open

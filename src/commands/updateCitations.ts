@@ -22,21 +22,17 @@ export class UpdateCitations {
 		plugin.addCommand({
 			id: 'update-citations',
 			name: 'Update literature notes',
-			callback: async () => {
-				await this.updateCitations();
-			}
+			callback: () => this.updateCitations()
 		});
 
 		plugin.addCommand({
 			id: 'update-citations-active',
 			name: 'Update literature note (active file)',
-			callback: async () => {
-				await this.updateCitationsActive();
-			}
+			callback: () => this.updateCitationsActive()
 		});
 	}
 
-	private async updateCitations() {
+	async updateCitations(fullSync: boolean = false) {
 		const startTime = performance.now();
 
 		const { jsonFiles, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
@@ -63,7 +59,7 @@ export class UpdateCitations {
 
 			// update frontmatter
 			if (targetFile && targetFile instanceof TFile) {
-				await updateFrontMatter(this.app, this.settings, targetFile, mergedData[i]);
+				await updateFrontMatter(this.app, this.settings, targetFile, mergedData[i], fullSync);
 				await updateContent(
 					this.app,
 					targetFile,

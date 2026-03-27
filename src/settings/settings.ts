@@ -4,11 +4,13 @@ export interface SimpleCitationsSettings {
 	folderPath: string;
 	includeAuthorTag: boolean;
 	includeJournalTag: boolean;
-	includeCollections: boolean;
+	includeBibliography: boolean;
+
 	optionalFields: string;
 	includeAbstract: boolean;
 	templatePath: string;
 	autoAddCitations: boolean;
+	autoSyncCitations: boolean;
 	autoUpdateCitations: boolean;
 	jsonUpdatedTimes: Record<string, number>;
 	inputPandocPath: string;
@@ -22,11 +24,13 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	folderPath: "",
 	includeAuthorTag: false,
 	includeJournalTag: false,
-	includeCollections: false,
+	includeBibliography: false,
+
 	optionalFields: "",
 	includeAbstract: false,
 	templatePath: "",
 	autoAddCitations: false,
+	autoSyncCitations: false,
 	autoUpdateCitations: false,
 	jsonUpdatedTimes: {},
 	inputPandocPath: "",
