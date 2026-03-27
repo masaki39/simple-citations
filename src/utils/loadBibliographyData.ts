@@ -1,4 +1,5 @@
 import { App, TFile, normalizePath } from "obsidian";
+import { getStrategy, mergeValues } from "./mergeStrategies";
 
 export interface BibliographyResult {
 	jsonFiles: TFile[];
@@ -9,8 +10,14 @@ export interface BibliographyResult {
  * Load and merge bibliography data from multiple JSON files.
  * Earlier files in the list have higher priority for deduplication.
  * Entries are deduplicated by citation-key.
+ * Properties are merged according to per-property merge strategies.
  */
-export async function loadBibliographyData(app: App, jsonPaths: string[], jsonNames: string[]): Promise<BibliographyResult> {
+export async function loadBibliographyData(
+	app: App,
+	jsonPaths: string[],
+	jsonNames: string[],
+	mergeStrategies: Record<string, string> = {}
+): Promise<BibliographyResult> {
 	const jsonFiles: TFile[] = [];
 	const mergedData: any[] = [];
 	const seenKeys = new Map<string, any>();
@@ -42,8 +49,16 @@ export async function loadBibliographyData(app: App, jsonPaths: string[], jsonNa
 				seenKeys.set(key, entry);
 				mergedData.push(entry);
 			} else {
-				// Duplicate — append bibliography name
+				// Duplicate — append bibliography name and merge properties
 				existing['_source_files'].push(bibName);
+				for (const [prop, value] of Object.entries(entry)) {
+					if (prop === 'citation-key' || prop === '_source_files') continue;
+					const strategy = getStrategy(mergeStrategies, prop);
+					if (strategy === 'merge') {
+						existing[prop] = mergeValues(existing[prop], value);
+					}
+					// 'priority' — keep existing value (higher priority file)
+				}
 			}
 		}
 	}

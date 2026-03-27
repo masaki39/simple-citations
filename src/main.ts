@@ -123,7 +123,7 @@ export default class SimpleCitations extends Plugin {
 				if (jsonFiles.length === 0 || !folder) return;
 
 				// load and merge bibliography data
-				const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
+				const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames, this.settings.mergeStrategies);
 				const files = folder.children.filter(file => file instanceof TFile);
 				const fileNames = files.map(file => file.name.replace(/\.md$/, ""));
 				// get citation keys

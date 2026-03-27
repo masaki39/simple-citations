@@ -36,7 +36,7 @@ export class AddCitations {
 		if (jsonFiles.length === 0 || !folder) return;
 
 		// load and merge bibliography data
-		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
+		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames, this.settings.mergeStrategies);
 		const files = new Map(folder.children.map(file => [file.name, file]));
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 		let fileCount: number = 0;
@@ -70,7 +70,6 @@ export class AddCitations {
 				}
 			}
 		}
-		// stop timer
 		if (intervalId) {
 			clearInterval(intervalId);
 		}
@@ -78,7 +77,6 @@ export class AddCitations {
 			const endTime = performance.now();
 			const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
 			notice.setMessage(`${fileCount} file(s) added.\nTime taken: ${elapsedTime} seconds`);
-			// hide notice after 3 seconds
 			setTimeout(() => {
 				notice?.hide();
 			}, 3000);

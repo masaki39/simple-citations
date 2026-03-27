@@ -1,6 +1,16 @@
 import { App, TFile } from 'obsidian';
 import { SimpleCitationsSettings } from '../settings/settings';
 
+/** Base JSON properties that the plugin reads from bibliography entries. */
+export const BASE_PROPERTIES: readonly string[] = [
+	'title',
+	'author',
+	'issued',
+	'container-title',
+	'DOI',
+	'abstract',
+];
+
 export async function updateFrontMatter(
 	app: App,
 	settings: SimpleCitationsSettings,

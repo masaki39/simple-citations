@@ -12,6 +12,7 @@ export interface SimpleCitationsSettings {
 	autoAddCitations: boolean;
 	autoSyncCitations: boolean;
 	autoUpdateCitations: boolean;
+	mergeStrategies: Record<string, string>;
 	jsonUpdatedTimes: Record<string, number>;
 	inputPandocPath: string;
 	pandocOutputPath: string;
@@ -32,6 +33,7 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	autoAddCitations: false,
 	autoSyncCitations: false,
 	autoUpdateCitations: false,
+	mergeStrategies: {},
 	jsonUpdatedTimes: {},
 	inputPandocPath: "",
 	pandocOutputPath: "",

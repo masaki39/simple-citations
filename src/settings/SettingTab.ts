@@ -2,9 +2,12 @@ import { App, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
 import SimpleCitations from "../main";
 import { updateSettingJsonStatus, updateSettingFolderStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
 import { JsonFileSuggest } from "./FileSuggest";
+import { getStrategy, getDefaultStrategy } from "../utils/mergeStrategies";
+import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
 
 export class SimpleCitationsSettingTab extends PluginSettingTab {
 	plugin: SimpleCitations;
+	private mergeContainer: HTMLElement | null = null;
 
 	constructor(app: App, plugin: SimpleCitations) {
 		super(app, plugin);
@@ -254,8 +257,17 @@ const optionalFieldsSetting = new Setting(containerEl)
 				.onChange(async (value) => {
 					this.plugin.settings.optionalFields = value;
 					await this.plugin.saveSettings();
+					if (this.mergeContainer) {
+						this.renderMergeStrategies(this.mergeContainer);
+					}
 				}));
 		optionalFieldsSetting.settingEl.addClass('simple-citations-mobile-wrap');
+		new Setting(containerEl)
+			.setName('Merge strategies')
+			.setDesc('When the same citation key appears in multiple bibliography files, choose how each property is handled.')
+			.setHeading();
+		this.mergeContainer = containerEl.createDiv({ cls: 'simple-citations-merge-list' });
+		this.renderMergeStrategies(this.mergeContainer);
 		new Setting(containerEl).setName('Additional Content').setHeading();
 		new Setting(containerEl)
 			.setName('Include abstract to content')
@@ -330,5 +342,67 @@ const optionalFieldsSetting = new Setting(containerEl)
 			});
 		pandocArgsSetting.settingEl.addClass('simple-citations-mobile-wrap');
 
+	}
+
+	private showBaseProperties = false;
+
+	private renderMergeStrategies(container: HTMLElement) {
+		container.empty();
+
+		const optionalFields = this.plugin.settings.optionalFields
+			.split('\n')
+			.map(f => f.trim())
+			.filter(Boolean);
+		const baseSet = new Set(BASE_PROPERTIES);
+
+		// Deduplicate: optional fields that overlap with base are shown in base section
+		const customProperties = optionalFields.filter(f => !baseSet.has(f));
+
+		const renderProperty = (parent: HTMLElement, prop: string) => {
+			const defaultStrat = getDefaultStrategy(prop);
+			const current = getStrategy(this.plugin.settings.mergeStrategies, prop);
+			const isCustom = this.plugin.settings.mergeStrategies[prop] !== undefined;
+
+			new Setting(parent)
+				.setName(prop)
+				.setDesc(isCustom ? `Default: ${defaultStrat}` : '')
+				.addDropdown(dropdown => dropdown
+					.addOption('priority', 'Priority')
+					.addOption('merge', 'Merge')
+					.setValue(current)
+					.onChange(async (value) => {
+						if (value === defaultStrat) {
+							delete this.plugin.settings.mergeStrategies[prop];
+						} else {
+							this.plugin.settings.mergeStrategies[prop] = value;
+						}
+						await this.plugin.saveSettings();
+						this.renderMergeStrategies(container);
+					}));
+		};
+
+		// Custom properties (always visible)
+		for (const prop of customProperties) {
+			renderProperty(container, prop);
+		}
+
+		// Base properties (collapsible, content inside the same setting block)
+		const baseSetting = new Setting(container)
+			.setName('Base properties')
+			.setDesc('Built-in properties managed by the plugin. All default to Priority.')
+			.addToggle(t => t
+				.setValue(this.showBaseProperties)
+				.onChange((value) => {
+					this.showBaseProperties = value;
+					this.renderMergeStrategies(container);
+				}));
+		baseSetting.settingEl.addClass('simple-citations-base-props-setting');
+
+		if (this.showBaseProperties) {
+			const baseList = baseSetting.settingEl.createDiv({ cls: 'simple-citations-base-props-list' });
+			for (const prop of BASE_PROPERTIES) {
+				renderProperty(baseList, prop);
+			}
+		}
 	}
 }

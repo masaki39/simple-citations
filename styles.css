@@ -97,6 +97,18 @@
 	font-weight: var(--font-semibold);
 }
 
+.simple-citations-base-props-setting {
+	flex-wrap: wrap;
+}
+
+.simple-citations-base-props-list {
+	flex-basis: 100%;
+}
+
+.simple-citations-base-props-list > .setting-item {
+	border-top: 1px solid var(--background-modifier-border);
+}
+
 .simple-citations-bib-empty {
 	color: var(--text-muted);
 	font-style: italic;
