@@ -1,4 +1,4 @@
-import { App, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
+import { App, Notice, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
 import SimpleCitations from "../main";
 import { updateSettingJsonStatus, updateSettingFolderStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
 import { JsonFileSuggest, FolderSuggest } from "./FileSuggest";
@@ -74,13 +74,17 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				// Name input
 				const nameInput = infoEl.createEl('input', { type: 'text', cls: 'simple-citations-bib-input' });
 				nameInput.value = this.plugin.settings.jsonNames[idx] || '';
-				nameInput.placeholder = `Display name (default: ${defaultName})`;
+				nameInput.placeholder = defaultName
+					? `Display name (default: ${defaultName})`
+					: 'Display name (defaults to JSON filename)';
 
 				// Path input with file suggest
 				const pathInput = infoEl.createEl('input', { type: 'text', cls: 'simple-citations-bib-input simple-citations-bib-input-path' });
 				pathInput.value = paths[idx];
 				pathInput.placeholder = 'Search for a .json file';
-				new JsonFileSuggest(this.app, pathInput);
+				new JsonFileSuggest(this.app, pathInput, () =>
+					this.plugin.settings.jsonPaths.filter((_, i) => i !== idx)
+				);
 
 				// Focus the first non-empty field, or path if new
 				if (!paths[idx]) {
@@ -100,7 +104,17 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 						this.display();
 						return;
 					}
-					this.plugin.settings.jsonPaths[idx] = pathInput.value;
+					// Reject duplicate paths
+					const newPath = pathInput.value;
+					const duplicate = this.plugin.settings.jsonPaths.some(
+						(p, i) => i !== idx && p === newPath
+					);
+					if (duplicate && newPath) {
+						new Notice('This bibliography file has already been added.');
+						pathInput.value = paths[idx];
+						return;
+					}
+					this.plugin.settings.jsonPaths[idx] = newPath;
 					this.plugin.settings.jsonNames[idx] = nameInput.value;
 					await this.plugin.saveSettings();
 					// Only re-render if focus left this row entirely
@@ -263,12 +277,16 @@ const optionalFieldsSetting = new Setting(containerEl)
 					}
 				}));
 		optionalFieldsSetting.settingEl.addClass('simple-citations-mobile-wrap');
-		new Setting(containerEl)
-			.setName('Merge strategies')
-			.setDesc('When the same citation key appears in multiple bibliography files, choose how each property is handled.')
-			.setHeading();
-		this.mergeContainer = containerEl.createDiv({ cls: 'simple-citations-merge-list' });
-		this.renderMergeStrategies(this.mergeContainer);
+		if (paths.filter(p => p).length > 1) {
+			new Setting(containerEl)
+				.setName('Merge strategies')
+				.setDesc('When the same citation key appears in multiple bibliography files, choose how each property is handled.')
+				.setHeading();
+			this.mergeContainer = containerEl.createDiv({ cls: 'simple-citations-merge-list' });
+			this.renderMergeStrategies(this.mergeContainer);
+		} else {
+			this.mergeContainer = null;
+		}
 		new Setting(containerEl).setName('Additional Content').setHeading();
 		new Setting(containerEl)
 			.setName('Include abstract to content')

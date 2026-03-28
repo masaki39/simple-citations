@@ -30,19 +30,23 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 
 export class JsonFileSuggest extends AbstractInputSuggest<TFile> {
 	private textInputEl: HTMLInputElement;
+	private excludePaths: () => string[];
 
-	constructor(app: App, inputEl: HTMLInputElement) {
+	constructor(app: App, inputEl: HTMLInputElement, excludePaths: () => string[] = () => []) {
 		super(app, inputEl);
 		this.textInputEl = inputEl;
+		this.excludePaths = excludePaths;
 	}
 
 	getSuggestions(inputStr: string): TFile[] {
 		const lowerInput = inputStr.toLowerCase();
+		const excluded = new Set(this.excludePaths());
 		return this.app.vault.getAllLoadedFiles().filter(
 			(f: TAbstractFile): f is TFile =>
 				f instanceof TFile &&
 				f.extension === "json" &&
-				f.path.toLowerCase().includes(lowerInput)
+				f.path.toLowerCase().includes(lowerInput) &&
+				!excluded.has(f.path)
 		);
 	}
 
