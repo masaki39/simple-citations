@@ -1,7 +1,7 @@
 import { App, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
 import SimpleCitations from "../main";
 import { updateSettingJsonStatus, updateSettingFolderStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
-import { JsonFileSuggest } from "./FileSuggest";
+import { JsonFileSuggest, FolderSuggest } from "./FileSuggest";
 import { getStrategy, getDefaultStrategy } from "../utils/mergeStrategies";
 import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
 
@@ -182,6 +182,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 
 					updateSettingFolderStatus(this.app, statusSpan, this.plugin.settings.folderPath);
 				}
+				new FolderSuggest(this.app, text.inputEl);
 				return text
 					.setPlaceholder('Enter Relative Path')
 					.setValue(this.plugin.settings.folderPath)
