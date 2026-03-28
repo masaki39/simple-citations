@@ -344,7 +344,7 @@ const optionalFieldsSetting = new Setting(containerEl)
 
 	}
 
-	private showBaseProperties = false;
+
 
 	private renderMergeStrategies(container: HTMLElement) {
 		container.empty();
@@ -386,20 +386,23 @@ const optionalFieldsSetting = new Setting(containerEl)
 			renderProperty(container, prop);
 		}
 
-		// Base properties (collapsible, content inside the same setting block)
-		const baseSetting = new Setting(container)
+		// Base properties (collapsible, wrapped in a single visual block)
+		const baseWrapper = container.createDiv({
+			cls: `simple-citations-base-props-wrapper${this.plugin.settings.showBaseProperties ? ' is-expanded' : ''}`
+		});
+		new Setting(baseWrapper)
 			.setName('Base properties')
 			.setDesc('Built-in properties managed by the plugin. All default to Priority.')
 			.addToggle(t => t
-				.setValue(this.showBaseProperties)
-				.onChange((value) => {
-					this.showBaseProperties = value;
+				.setValue(this.plugin.settings.showBaseProperties)
+				.onChange(async (value) => {
+					this.plugin.settings.showBaseProperties = value;
+					await this.plugin.saveSettings();
 					this.renderMergeStrategies(container);
 				}));
-		baseSetting.settingEl.addClass('simple-citations-base-props-setting');
 
-		if (this.showBaseProperties) {
-			const baseList = baseSetting.settingEl.createDiv({ cls: 'simple-citations-base-props-list' });
+		if (this.plugin.settings.showBaseProperties) {
+			const baseList = baseWrapper.createDiv({ cls: 'simple-citations-base-props-list' });
 			for (const prop of BASE_PROPERTIES) {
 				renderProperty(baseList, prop);
 			}

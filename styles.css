@@ -97,17 +97,41 @@
 	font-weight: var(--font-semibold);
 }
 
-.simple-citations-base-props-setting {
-	flex-wrap: wrap;
-}
-
-.simple-citations-base-props-list {
-	flex-basis: 100%;
+/* When expanded, merge setting and list into one visual block */
+.simple-citations-base-props-wrapper.is-expanded > .setting-item {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+	margin-bottom: 0;
 }
 
 .simple-citations-base-props-list > .setting-item {
 	border-top: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	flex-direction: row !important;
+	align-items: center !important;
+	margin-bottom: 0;
 }
+
+.simple-citations-base-props-list > .setting-item:last-child {
+	border-bottom-left-radius: var(--setting-items-radius);
+	border-bottom-right-radius: var(--setting-items-radius);
+}
+
+.simple-citations-base-props-list > .setting-item > .setting-item-control,
+.simple-citations-merge-list > .setting-item > .setting-item-control {
+	width: auto !important;
+}
+
+.simple-citations-merge-list > .setting-item {
+	flex-direction: row !important;
+	align-items: center !important;
+}
+
+.simple-citations-base-props-list > .setting-item > .setting-item-control select,
+.simple-citations-merge-list > .setting-item > .setting-item-control select {
+	width: 120px;
+}
+
 
 .simple-citations-bib-empty {
 	color: var(--text-muted);
