@@ -39,7 +39,7 @@ export class UpdateCitations {
 		if (jsonFiles.length === 0 || !folder) return;
 
 		// load and merge bibliography data
-		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames, this.settings.mergeStrategies);
+		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
 		const files = new Map(folder.children.map(file => [file.name, file]));
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 		let fileCount: number = 0;
@@ -106,7 +106,7 @@ export class UpdateCitations {
 		const citekey = activeFile.name.slice(1, -3);
 
 		// Load and merge bibliography data
-		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames, this.settings.mergeStrategies);
+		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 
 		// Find the matching entry in merged data
@@ -157,7 +157,7 @@ export class UpdateCitations {
 		const citekey = file.name.slice(1, -3);
 
 		// Load and merge bibliography data
-		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames, this.settings.mergeStrategies);
+		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 
 		// Find the matching entry in merged data
