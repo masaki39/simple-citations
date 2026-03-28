@@ -122,32 +122,57 @@ Set `pdf` in the plugin settings.
 </details>
 
 <details>
-<summary>Collection name</summary>
+<summary>Collection paths</summary>
 
 ```javascript
 if (Translator.BetterCSLJSON) {
-
   function path(key) {
-    const coll = Translator.collections[key]
-    if (!coll) return ''
-    if (!coll.parent) return coll.name
-    return `${path(coll.parent)}/${coll.name}`
+    const coll = Translator.collections[key];
+    if (!coll) return '';
+    if (!coll.parent) return coll.name;
+    return `${path(coll.parent)}/${coll.name}`;
   }
 
   let collections = [];
-
   zotero.collections.forEach((key) => {
-    const p = path(key)
-    if (p) collections.push(p)
+    const p = path(key);
+    if (p) collections.push(p);
   });
 
   csl.collections = collections;
 }
 ```
 
-Set `collections` in the plugin settings.
+Set `collections` in the plugin settings. Each entry gets its Zotero collection paths (e.g. `["Folder/Subfolder"]`).
 
 > From [Issues #5](https://github.com/masaki39/simple-citations/issues/5)
+
+</details>
+
+<details>
+<summary>Collection paths with library name prefix</summary>
+
+```javascript
+if (Translator.BetterCSLJSON) {
+  function path(key) {
+    const coll = Translator.collections[key];
+    if (!coll) return '';
+    if (!coll.parent) return coll.name;
+    return `${path(coll.parent)}/${coll.name}`;
+  }
+
+  let collections = [];
+  let library = Translator.exportPath.replace(/.*[\\/]/, '').replace(/\.[^.]+$/, '');
+  zotero.collections.forEach((key) => {
+    const p = path(key);
+    if (p) collections.push(library + ": " + p);
+  });
+
+  csl.collections = collections.length > 0 ? collections : [library];
+}
+```
+
+Set `collections` in the plugin settings. Each collection is prefixed with the library name derived from the export file name (e.g. `"My Library: Folder/Subfolder"`). Entries without collections show the library name alone (e.g. `["My Library"]`).
 
 </details>
 
