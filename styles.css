@@ -1,3 +1,5 @@
+/* ── Bibliography file paths ── */
+
 .simple-citations-bib-setting {
 	flex-wrap: wrap;
 }
@@ -28,11 +30,44 @@
 	line-height: 1.4;
 }
 
-.simple-citations-bib-desc {
+.simple-citations-bib-path {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-muted);
 	margin-top: 2px;
+	word-break: break-all;
 }
+
+.simple-citations-bib-buttons {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+	margin-left: 12px;
+}
+
+.simple-citations-bib-input {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	line-height: 1.4;
+}
+
+.simple-citations-bib-input-path {
+	margin-top: 6px;
+}
+
+.simple-citations-bib-empty {
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 10px 0;
+	margin: 0;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* ── Status icons ── */
 
 .simple-citations-status {
 	display: inline-flex;
@@ -54,50 +89,8 @@
 	color: var(--text-error);
 }
 
-.simple-citations-bib-buttons {
-	display: flex;
-	gap: 4px;
-	flex-shrink: 0;
-	margin-left: 12px;
-}
+/* ── Merge strategies: base properties (collapsible block) ── */
 
-
-.simple-citations-bib-input {
-	width: 100%;
-	padding: 8px 10px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-s);
-	background: var(--background-primary);
-	color: var(--text-normal);
-	font-size: var(--font-ui-medium);
-	line-height: 1.4;
-}
-
-.simple-citations-bib-path {
-	font-size: var(--font-ui-smaller);
-	color: var(--text-muted);
-	margin-top: 2px;
-	word-break: break-all;
-}
-
-.simple-citations-bib-input-path {
-	margin-top: 6px;
-}
-
-.is-mobile .simple-citations-mobile-wrap {
-	flex-wrap: wrap;
-}
-
-.is-mobile .simple-citations-mobile-wrap .setting-item-control textarea {
-	width: 100% !important;
-} 
-
-.simple-citations-note-label {
-	color: var(--text-error);
-	font-weight: var(--font-semibold);
-}
-
-/* When expanded, merge setting and list into one visual block */
 .simple-citations-base-props-wrapper.is-expanded > .setting-item {
 	border-bottom-left-radius: 0;
 	border-bottom-right-radius: 0;
@@ -117,26 +110,34 @@
 	border-bottom-right-radius: var(--setting-items-radius);
 }
 
-.simple-citations-base-props-list > .setting-item > .setting-item-control,
-.simple-citations-merge-list > .setting-item > .setting-item-control {
-	width: auto !important;
+/* ── Misc ── */
+
+.simple-citations-note-label {
+	color: var(--text-error);
+	font-weight: var(--font-semibold);
 }
 
-.simple-citations-merge-list > .setting-item {
+/* ── Mobile overrides ── */
+
+.is-mobile .simple-citations-mobile-wrap {
+	flex-wrap: wrap;
+}
+
+.is-mobile .simple-citations-mobile-wrap .setting-item-control textarea {
+	width: 100% !important;
+}
+
+.is-mobile .simple-citations-merge-list > .setting-item {
 	flex-direction: row !important;
 	align-items: center !important;
 }
 
-.simple-citations-base-props-list > .setting-item > .setting-item-control select,
-.simple-citations-merge-list > .setting-item > .setting-item-control select {
-	width: 120px;
+.is-mobile .simple-citations-base-props-list > .setting-item > .setting-item-control,
+.is-mobile .simple-citations-merge-list > .setting-item > .setting-item-control {
+	width: auto !important;
 }
 
-
-.simple-citations-bib-empty {
-	color: var(--text-muted);
-	font-style: italic;
-	padding: 10px 0;
-	margin: 0;
-	border-top: 1px solid var(--background-modifier-border);
+.is-mobile .simple-citations-base-props-list > .setting-item > .setting-item-control select,
+.is-mobile .simple-citations-merge-list > .setting-item > .setting-item-control select {
+	width: 120px;
 }
