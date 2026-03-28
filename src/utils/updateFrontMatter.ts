@@ -9,7 +9,6 @@ export const BASE_PROPERTIES: readonly string[] = [
 	'year',
 	'journal',
 	'doi',
-	'abstract',
 ];
 
 /** Extract transformed frontmatter values from a raw JSON entry. */
