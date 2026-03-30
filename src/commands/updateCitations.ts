@@ -4,6 +4,7 @@ import { updateContent } from '../utils/updateContent';
 import { updateFrontMatter } from '../utils/updateFrontMatter';
 import { checkRequiredFiles } from '../utils/checkRequiredFiles';
 import { validateCitekey } from '../utils/validateCitekey';
+import { loadBibliographyData } from '../utils/loadBibliographyData';
 
 export class UpdateCitations {
 	private app: App;
@@ -21,29 +22,24 @@ export class UpdateCitations {
 		plugin.addCommand({
 			id: 'update-citations',
 			name: 'Update literature notes',
-			callback: async () => {
-				await this.updateCitations();
-			}
+			callback: () => this.updateCitations()
 		});
 
 		plugin.addCommand({
 			id: 'update-citations-active',
 			name: 'Update literature note (active file)',
-			callback: async () => {
-				await this.updateCitationsActive();
-			}
+			callback: () => this.updateCitationsActive()
 		});
 	}
 
-	private async updateCitations() {
+	async updateCitations(fullSync: boolean = false) {
 		const startTime = performance.now();
 
-		const { jsonFile, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
-		if (!jsonFile || !folder) return;
+		const { jsonFiles, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
+		if (jsonFiles.length === 0 || !folder) return;
 
-		// parse json Data and files
-		const jsonContents = await this.app.vault.cachedRead(jsonFile);
-		const jsonData = JSON.parse(jsonContents);
+		// load and merge bibliography data
+		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
 		const files = new Map(folder.children.map(file => [file.name, file]));
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 		let fileCount: number = 0;
@@ -55,30 +51,30 @@ export class UpdateCitations {
 		}, 200);
 
 		// check json file
-		for (let i = 0; i < jsonData.length; i++) {
-			const citekey = jsonData[i]?.['citation-key'];
+		for (let i = 0; i < mergedData.length; i++) {
+			const citekey = mergedData[i]?.['citation-key'];
 			if (!validateCitekey(citekey)) continue;
 			const targetFileName = "@" + citekey + ".md";
 			const targetFile = files.get(targetFileName);
 
 			// update frontmatter
 			if (targetFile && targetFile instanceof TFile) {
-				await updateFrontMatter(this.app, this.settings, targetFile, jsonData[i]);
+				const before = await this.app.vault.read(targetFile);
+				await updateFrontMatter(this.app, this.settings, targetFile, mergedData[i], fullSync);
 				await updateContent(
 					this.app,
 					targetFile,
 					templateContent,
-					this.settings.includeAbstract ? jsonData[i]['abstract'] : ""
+					this.settings.includeAbstract ? mergedData[i]['abstract'] : ""
 				);
-				fileCount++;
+				const after = await this.app.vault.read(targetFile);
+				if (before !== after) fileCount++;
 			}
 		}
-		// stop timer
 		clearInterval(intervalId);
 		const endTime = performance.now();
 		const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
 		notice.setMessage(`${fileCount} file(s) updated.\nTime taken: ${elapsedTime} seconds`);
-		// hide notice after 3 seconds
 		setTimeout(() => {
 			notice.hide();
 		}, 3000);
@@ -97,8 +93,8 @@ export class UpdateCitations {
 			return;
 		}
 
-		const { jsonFile, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
-		if (!jsonFile || !folder) return;
+		const { jsonFiles, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
+		if (jsonFiles.length === 0 || !folder) return;
 
 		// Check if the file is in the configured folder
 		if (activeFile.parent !== folder) {
@@ -109,16 +105,15 @@ export class UpdateCitations {
 		// Extract citation key from filename
 		const citekey = activeFile.name.slice(1, -3);
 
-		// Parse JSON data
-		const jsonContents = await this.app.vault.cachedRead(jsonFile);
-		const jsonData = JSON.parse(jsonContents);
+		// Load and merge bibliography data
+		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 
-		// Find the matching entry in JSON data
-		const matchingEntry = jsonData.find((item: any) => item?.['citation-key'] === citekey);
-		
+		// Find the matching entry in merged data
+		const matchingEntry = mergedData.find((item: any) => item?.['citation-key'] === citekey);
+
 		if (!matchingEntry) {
-			new Notice(`No citation data found for "${citekey}" in JSON file.`);
+			new Notice(`No citation data found for "${citekey}" in any bibliography file.`);
 			return;
 		}
 
@@ -150,8 +145,8 @@ export class UpdateCitations {
 			return;
 		}
 
-		const { jsonFile, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
-		if (!jsonFile || !folder) return;
+		const { jsonFiles, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
+		if (jsonFiles.length === 0 || !folder) return;
 
 		// Check if the file is in the configured folder
 		if (file.parent !== folder) {
@@ -161,14 +156,13 @@ export class UpdateCitations {
 		// Extract citation key from filename
 		const citekey = file.name.slice(1, -3);
 
-		// Parse JSON data
-		const jsonContents = await this.app.vault.cachedRead(jsonFile);
-		const jsonData = JSON.parse(jsonContents);
+		// Load and merge bibliography data
+		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 
-		// Find the matching entry in JSON data
-		const matchingEntry = jsonData.find((item: any) => item?.['citation-key'] === citekey);
-		
+		// Find the matching entry in merged data
+		const matchingEntry = mergedData.find((item: any) => item?.['citation-key'] === citekey);
+
 		if (!matchingEntry) {
 			return;
 		}

@@ -1,98 +1,33 @@
-import { Notice, Plugin, TFile, normalizePath } from 'obsidian';
+import { Notice, Plugin, TFile, normalizePath, Platform } from 'obsidian';
 import { spawn } from 'child_process';
 import { DEFAULT_SETTINGS, SimpleCitationsSettings } from './settings/settings';
 import { SimpleCitationsSettingTab } from './settings/SettingTab';
-import { autoAddCitations } from './commands/AutoAddCitations';
+import { autoAddCitations, autoSyncCitations } from './commands/autoCitations';
+import { AddCitations } from './commands/addCitations';
 import { UpdateCitations } from './commands/updateCitations';
-import { updateContent } from './utils/updateContent';
-import { updateFrontMatter } from './utils/updateFrontMatter';
-import { checkRequiredFiles } from './utils/checkRequiredFiles';
-import { validateCitekey } from './utils/validateCitekey';
+import { SyncCitations } from './commands/syncCitations';
 import { convertToPandocFormat } from './utils/convertToPandocFormat';
+import { loadBibliographyData } from './utils/loadBibliographyData';
+import { checkRequiredFiles } from './utils/checkRequiredFiles';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
-	private updateCitations: UpdateCitations;
-	
+	private addCitations!: AddCitations;
+	private updateCitations!: UpdateCitations;
+	private syncCitations!: SyncCitations;
+
 	async onload() {
 		await this.loadSettings();
 
-		// Initialize update citations class
-		this.updateCitations = new UpdateCitations(
-			this.app,
-			this.settings
-		);
+		this.addCitations = new AddCitations(this.app, this.settings, () => this.saveSettings());
+		this.updateCitations = new UpdateCitations(this.app, this.settings);
+		this.syncCitations = new SyncCitations(this.app, this.addCitations, this.updateCitations);
 
-		// Register update commands
+		this.addCitations.registerCommands(this);
 		this.updateCitations.registerCommands(this);
+		this.syncCitations.registerCommands(this);
 
-		this.addCommand({
-			id: 'add-citations',
-			name: 'Add literature notes',
-			callback: async () => {
-				const startTime = performance.now(); // start time
-
-				const { jsonFile, folder, templateFile } = checkRequiredFiles(this.app, this.settings);
-				if (!jsonFile || !folder) return;
-				
-				// parse json Data and files
-				const jsonContents = await this.app.vault.cachedRead(jsonFile);
-				const jsonData = JSON.parse(jsonContents);
-				const files = new Map(folder.children.map(file => [file.name, file])); // マップ化
-				let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
-				let fileCount: number = 0;
-				
-				let notice: Notice | null = null;
-				let intervalId: NodeJS.Timeout | null = null;
-
-				// check json file
-				for (let i = 0; i < jsonData.length; i++) {
-					const citekey = jsonData[i]?.['citation-key'];
-					if (!validateCitekey(citekey)) continue; // `citation-key` がないデータはスキップ
-					const targetFileName = "@" + citekey + ".md";
-					const targetFile = files.get(targetFileName); // O(1) の高速検索
-
-					// if nonexisting, create file
-					if (!targetFile){
-						const newFile = await this.app.vault.create(`${folder.path}/${targetFileName}`,"");
-						await updateFrontMatter(this.app, this.settings, newFile, jsonData[i]);
-						await updateContent(
-							this.app,
-							newFile,
-							templateContent,
-							this.settings.includeAbstract ? jsonData[i]['abstract'] : ""
-						);
-						fileCount ++;
-						if (fileCount === 1) {
-							notice = new Notice(`${fileCount} file(s) added.`, 0);
-							intervalId = setInterval(() => {
-								notice?.setMessage(`${fileCount} file(s) added.`);
-							}, 200);
-						}
-					}
-				}
-				// stop timer
-				if (intervalId) {
-					clearInterval(intervalId);
-				}
-				if (notice) {
-					const endTime = performance.now(); // end time
-					const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
-					notice.setMessage(`${fileCount} file(s) added.\nTime taken: ${elapsedTime} seconds`);
-					// hide notice after 3 seconds
-					setTimeout(() => {
-						notice?.hide();
-					}, 3000);
-				}
-
-				// update json updated time
-				this.settings.jsonUpdatedTime = new Date(jsonFile.stat.mtime).getTime();
-				this.saveSettings();
-				console.log("Add literature notes completed.");
-			}
-		});
-
-		this.addCommand({
+		if (Platform.isDesktop) this.addCommand({
 			id: 'execute-pandoc',
 			name: 'Pandoc Citeproc Execution (docx)',
 			callback: async () => {
@@ -120,17 +55,24 @@ export default class SimpleCitations extends Plugin {
 				const PandocOutputPath = this.settings.pandocOutputPath ? normalizePath(this.settings.pandocOutputPath) : BasePath + "/" + CurrentFileFolder; // output path
 				const PandocOutputFile = PandocOutputPath + "/" + CurrentFileName?.replace(/\.md$/, ".docx"); // output file
 				const PandocExtraArgs = this.settings.pandocArgs ? this.settings.pandocArgs.split(/[\s\n]+/) : [];
+
+				// build bibliography args for all json files
+				const bibArgs: string[] = [];
+				for (const path of this.settings.jsonPaths) {
+					if (!path) continue;
+					bibArgs.push("--bibliography", BasePath + "/" + normalizePath(path));
+				}
+
 				const PandocArgs = [
 					"--citeproc",
-					"--bibliography",
-					BasePath + "/" + normalizePath(this.settings.jsonPath),
+					...bibArgs,
 					...PandocExtraArgs
 				];
 
 				// execute pandoc
 				try {
-					const pandocProcess = spawn(PandocPath, 
-						[PandocInputFile, "-o", PandocOutputFile, ...PandocArgs], 
+					const pandocProcess = spawn(PandocPath,
+						[PandocInputFile, "-o", PandocOutputFile, ...PandocArgs],
 						{env: process.env});
 
 					// error handling
@@ -177,22 +119,21 @@ export default class SimpleCitations extends Plugin {
 			name: 'Copy missing note links not included in json file',
 			callback: async () => {
 
-				const { jsonFile, folder } = checkRequiredFiles(this.app, this.settings);
-				if (!jsonFile || !folder) return;
+				const { jsonFiles, folder } = checkRequiredFiles(this.app, this.settings);
+				if (jsonFiles.length === 0 || !folder) return;
 
-				// parse json Data and file names
-				const jsonContents = await this.app.vault.cachedRead(jsonFile);
-				const jsonData = JSON.parse(jsonContents);
+				// load and merge bibliography data
+				const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
 				const files = folder.children.filter(file => file instanceof TFile);
 				const fileNames = files.map(file => file.name.replace(/\.md$/, ""));
 				// get citation keys
-				const citationKeys = new Set(jsonData.map((entry: { [x: string]: any; }) => entry["citation-key"]));
+				const citationKeys = new Set(mergedData.map((entry: { [x: string]: any; }) => entry["citation-key"]));
 				// get missing files
 				const missingFiles = fileNames.filter(fileName => !citationKeys.has(fileName.slice(1)));
 				if (missingFiles.length === 0) {
 					new Notice("No missing notes found.");
 					return;
-				}		
+				}
 				// copy missing links
 				const missingLinks = missingFiles.map(fileName => `[[${fileName}]]`).join("\n");
 				await navigator.clipboard.writeText(missingLinks);
@@ -202,10 +143,11 @@ export default class SimpleCitations extends Plugin {
 
 		// This adds a settings tab so the user can configure various aspects of the plugin
 		this.addSettingTab(new SimpleCitationsSettingTab(this.app, this));
-		
-		// watch json file
+
+		// watch json files for auto-add / auto-sync
 		this.registerEvent(this.app.vault.on('modify', file => {
 			autoAddCitations(this.app, this.settings, file as TFile);
+			autoSyncCitations(this.app, this.settings, file as TFile);
 		}));
 
 		// auto update citations on file open
@@ -215,7 +157,13 @@ export default class SimpleCitations extends Plugin {
 
 		// auto execute add citations command at start
 		this.app.workspace.onLayoutReady(() => {
-			autoAddCitations(this.app, this.settings, this.app.vault.getFileByPath(normalizePath(this.settings.jsonPath)) as TFile);
+			// trigger for first json file if it exists
+			if (this.settings.jsonPaths.length > 0 && this.settings.jsonPaths[0]) {
+				const firstFile = this.app.vault.getFileByPath(normalizePath(this.settings.jsonPaths[0]));
+				if (firstFile) {
+					autoAddCitations(this.app, this.settings, firstFile as TFile);
+				}
+			}
 		});
 	}
 
@@ -224,7 +172,54 @@ export default class SimpleCitations extends Plugin {
 	}
 
 	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+		const data = await this.loadData();
+		this.settings = Object.assign({}, DEFAULT_SETTINGS, data);
+
+		let needsSave = false;
+
+		// Migrate from old single jsonPath to jsonPaths array
+		if (data && 'jsonPath' in data && typeof data.jsonPath === 'string' && data.jsonPath) {
+			if (!this.settings.jsonPaths || this.settings.jsonPaths.length === 0) {
+				this.settings.jsonPaths = [data.jsonPath];
+			}
+			delete (this.settings as any).jsonPath;
+			needsSave = true;
+		}
+
+		// Migrate from old jsonUpdatedTime to jsonUpdatedTimes
+		if (data && 'jsonUpdatedTime' in data && typeof data.jsonUpdatedTime === 'number') {
+			if (!this.settings.jsonUpdatedTimes || Object.keys(this.settings.jsonUpdatedTimes).length === 0) {
+				for (const path of this.settings.jsonPaths) {
+					if (path) {
+						this.settings.jsonUpdatedTimes[normalizePath(path)] = data.jsonUpdatedTime;
+					}
+				}
+			}
+			delete (this.settings as any).jsonUpdatedTime;
+			needsSave = true;
+		}
+
+		// Ensure jsonPaths is always an array
+		if (!Array.isArray(this.settings.jsonPaths)) {
+			this.settings.jsonPaths = [];
+		}
+
+		// Ensure jsonNames is always an array matching jsonPaths length
+		if (!Array.isArray(this.settings.jsonNames)) {
+			this.settings.jsonNames = [];
+		}
+		while (this.settings.jsonNames.length < this.settings.jsonPaths.length) {
+			this.settings.jsonNames.push('');
+		}
+
+		// Ensure jsonUpdatedTimes is always an object
+		if (!this.settings.jsonUpdatedTimes || typeof this.settings.jsonUpdatedTimes !== 'object') {
+			this.settings.jsonUpdatedTimes = {};
+		}
+
+		if (needsSave) {
+			await this.saveSettings();
+		}
 	}
 
 	async saveSettings() {

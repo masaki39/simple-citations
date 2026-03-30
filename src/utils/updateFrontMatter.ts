@@ -1,24 +1,59 @@
 import { App, TFile } from 'obsidian';
 import { SimpleCitationsSettings } from '../settings/settings';
+import { getStrategy, mergeValues } from './mergeStrategies';
+
+/** Base frontmatter properties managed by the plugin. */
+export const BASE_PROPERTIES: readonly string[] = [
+	'title',
+	'authors',
+	'year',
+	'journal',
+	'doi',
+];
+
+/** Extract transformed frontmatter values from a raw JSON entry. */
+function extractValues(item: any): Record<string, any> {
+	const vals: Record<string, any> = {};
+	vals.title = item['title'];
+	if (item['author'] && Array.isArray(item['author'])) {
+		vals.authors = Array.from(new Set(
+			item['author'].map((a: any) =>
+				(a.literal || `${a.given ?? ""} ${a.family ?? ""}`).trim()
+			)
+		));
+	}
+	if (item['issued'] && Array.isArray(item['issued']['date-parts']) && item['issued']['date-parts'][0] && !isNaN(item['issued']['date-parts'][0][0])) {
+		vals.year = Number(item['issued']['date-parts'][0][0]);
+	}
+	vals.journal = item['container-title'];
+	if (item['DOI']) vals.doi = `https://doi.org/${item['DOI']}`;
+	return vals;
+}
 
 export async function updateFrontMatter(
 	app: App,
 	settings: SimpleCitationsSettings,
 	targetFile: TFile,
-	item: any
+	item: any,
+	fullSync: boolean = false
 ) {
 	await app.fileManager.processFrontMatter(targetFile, (fm) => {
+		if (fullSync) {
+			for (const key of Object.keys(fm)) {
+				delete fm[key];
+			}
+		}
 		fm.aliases = [];
 		if (!Array.isArray(fm.tags)) {
 			fm.tags = fm.tags ? [fm.tags] : [];
-		}			
+		}
 		fm.title = item['title'];
 		if (item['author'] && Array.isArray(item['author'])) {
 			fm.authors = Array.from(new Set(
-				item['author'].map(author =>
+				item['author'].map((author: any) =>
 					(author.literal || `${author.given ?? ""} ${author.family ?? ""}`).trim()
 				)
-			));				
+			));
 		}
 		if (item['issued'] && Array.isArray(item['issued']['date-parts']) && item['issued']['date-parts'][0] && !isNaN(item['issued']['date-parts'][0][0])) {
 			fm.year = Number(item['issued']['date-parts'][0][0]);
@@ -26,6 +61,12 @@ export async function updateFrontMatter(
 		fm.journal = item['container-title'];
 		fm.doi = item['DOI'] ? `https://doi.org/${item['DOI']}` : "";
 		fm.zotero = "zotero://select/items/@" + item['id'];
+		if (settings.includeBibliography && item['_source_files'] && Array.isArray(item['_source_files'])) {
+			fm.bibliography = item['_source_files'];
+		} else {
+			delete fm.bibliography;
+		}
+
 		if (fm.authors && fm.authors.length > 0 && fm.journal && fm.year) {
 			fm.aliases.push(`${fm.authors[0]}. ${fm.journal}. ${fm.year}`);
 		}
@@ -67,25 +108,50 @@ export async function updateFrontMatter(
 			}
 		}
 
-		// add optional fields
-		if (settings.optionalFields) {
-			const optionalFields = settings.optionalFields
-				.split("\n")
-				.map(f => f.trim())
-				.filter(Boolean);
+		// add optional fields from priority entry
+		const optionalFields = settings.optionalFields
+			? settings.optionalFields.split("\n").map(f => f.trim()).filter(Boolean)
+			: [];
+		for (const field of optionalFields) {
+			if (item[field] !== undefined) {
+				const value = item[field];
+				if (
+					typeof value === "string" ||
+					typeof value === "number" ||
+					(Array.isArray(value) && value.every((v: any) =>
+						typeof v === "string" || typeof v === "number"
+					))
+				) {
+					fm[field] = value;
+				}
+			}
+		}
+
+		// Merge from duplicate entries (after all priority values are set)
+		const duplicates: any[] = item['_duplicates'] || [];
+		for (const dup of duplicates) {
+			// Base properties
+			const dupVals = extractValues(dup);
+			for (const [key, val] of Object.entries(dupVals)) {
+				if (val === undefined) continue;
+				if (getStrategy(settings.mergeStrategies, key) === 'merge') {
+					fm[key] = mergeValues(fm[key], val);
+				}
+			}
+			// Optional fields
 			for (const field of optionalFields) {
-				if (item[field] !== undefined) {
-					const value = item[field];
+				if (dup[field] === undefined) continue;
+				if (getStrategy(settings.mergeStrategies, field) === 'merge') {
+					const value = dup[field];
 					if (
 						typeof value === "string" ||
 						typeof value === "number" ||
-						(Array.isArray(value) && value.every(v =>
+						(Array.isArray(value) && value.every((v: any) =>
 							typeof v === "string" || typeof v === "number"
 						))
 					) {
-						fm[field] = value;
+						fm[field] = mergeValues(fm[field], value);
 					}
-					// それ以外（オブジェクト等）は無視
 				}
 			}
 		}

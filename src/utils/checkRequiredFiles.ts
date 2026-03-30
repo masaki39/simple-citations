@@ -2,49 +2,56 @@ import { App, Notice, TFile, TFolder, normalizePath } from 'obsidian';
 import { SimpleCitationsSettings } from '../settings/settings';
 
 export interface FileCheckResult {
-    jsonFile: TFile | null;
+    jsonFiles: TFile[];
     folder: TFolder | null;
     templateFile: TFile | null;
     error?: string;
 }
 
 export function checkRequiredFiles(app: App, settings: SimpleCitationsSettings): FileCheckResult {
-    // normalize path
-    const normalizedJsonPath = normalizePath(settings.jsonPath);
-    const normalizedFolderPath = normalizePath(settings.folderPath);
-    const normalizedTemplatePath = normalizePath(settings.templatePath + ".md");
+    // resolve json files
+    const jsonFiles: TFile[] = [];
+    for (const path of settings.jsonPaths) {
+        if (!path) continue;
+        const normalizedPath = normalizePath(path);
+        const file = app.vault.getFileByPath(normalizedPath);
+        if (file && file.extension === 'json') {
+            jsonFiles.push(file);
+        }
+    }
 
-    // get json and folder existing check
-    const jsonFile = app.vault.getFileByPath(`${normalizedJsonPath}`);
-    const isJsonFile = jsonFile && jsonFile.extension === 'json';
-    const folder = app.vault.getAbstractFileByPath(`${normalizedFolderPath}`);
-    const isFolder = folder && folder instanceof TFolder;
-    const templateFile = app.vault.getFileByPath(`${normalizedTemplatePath}`);
- 
-    // Individual error checks
-    if (!isJsonFile) {
-        new Notice(`JSON file not found: ${normalizedJsonPath}`);
+    if (jsonFiles.length === 0) {
+        new Notice(`No valid JSON files found. Please check bibliography file paths in settings.`);
         return {
-            jsonFile: null,
+            jsonFiles: [],
             folder: null,
             templateFile: null,
-            error: `JSON file not found: ${normalizedJsonPath}`
+            error: `No valid JSON files found`
         };
     }
+
+    // normalize folder path
+    const normalizedFolderPath = normalizePath(settings.folderPath);
+    const folder = app.vault.getAbstractFileByPath(normalizedFolderPath);
+    const isFolder = folder && folder instanceof TFolder;
 
     if (!isFolder) {
         new Notice(`Folder not found: ${normalizedFolderPath}`);
         return {
-            jsonFile: null,
+            jsonFiles: [],
             folder: null,
             templateFile: null,
             error: `Folder not found: ${normalizedFolderPath}`
         };
     }
 
+    // template file
+    const normalizedTemplatePath = normalizePath(settings.templatePath + ".md");
+    const templateFile = app.vault.getFileByPath(normalizedTemplatePath);
+
     return {
-        jsonFile,
+        jsonFiles,
         folder,
         templateFile
     };
-} 
+}

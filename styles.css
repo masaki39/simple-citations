@@ -1,8 +1,143 @@
-/*
+/* ── Bibliography file paths ── */
 
-This CSS file will be included with your plugin, and
-available in the app when your plugin is enabled.
+.simple-citations-bib-setting {
+	flex-wrap: wrap;
+}
 
-If your plugin does not need CSS, delete this file.
+.simple-citations-bib-list {
+	flex-basis: 100%;
+}
 
-*/
+.simple-citations-bib-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 10px 0;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+.simple-citations-bib-info {
+	flex: 1;
+	min-width: 0;
+}
+
+.simple-citations-bib-name {
+	display: flex;
+	align-items: center;
+	font-size: var(--font-ui-medium);
+	color: var(--text-accent);
+	word-break: break-all;
+	line-height: 1.4;
+}
+
+.simple-citations-bib-path {
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+	margin-top: 2px;
+	word-break: break-all;
+}
+
+.simple-citations-bib-buttons {
+	display: flex;
+	gap: 4px;
+	flex-shrink: 0;
+	margin-left: 12px;
+}
+
+.simple-citations-bib-input {
+	width: 100%;
+	padding: 8px 10px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background: var(--background-primary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-medium);
+	line-height: 1.4;
+}
+
+.simple-citations-bib-input-path {
+	margin-top: 6px;
+}
+
+.simple-citations-bib-empty {
+	color: var(--text-muted);
+	font-style: italic;
+	padding: 10px 0;
+	margin: 0;
+	border-top: 1px solid var(--background-modifier-border);
+}
+
+/* ── Status icons ── */
+
+.simple-citations-status {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	margin-right: 6px;
+}
+
+.simple-citations-status svg {
+	width: var(--icon-s);
+	height: var(--icon-s);
+}
+
+.simple-citations-status.is-valid {
+	color: var(--text-success);
+}
+
+.simple-citations-status.is-invalid {
+	color: var(--text-error);
+}
+
+/* ── Merge strategies: base properties (collapsible block) ── */
+
+.simple-citations-base-props-wrapper.is-expanded > .setting-item {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+	margin-bottom: 0;
+}
+
+.simple-citations-base-props-list > .setting-item {
+	border-top: 1px solid var(--background-modifier-border);
+	border-radius: 0;
+	flex-direction: row !important;
+	align-items: center !important;
+	margin-bottom: 0;
+}
+
+.simple-citations-base-props-list > .setting-item:last-child {
+	border-bottom-left-radius: var(--setting-items-radius);
+	border-bottom-right-radius: var(--setting-items-radius);
+}
+
+/* ── Misc ── */
+
+.simple-citations-note-label {
+	color: var(--text-error);
+	font-weight: var(--font-semibold);
+}
+
+/* ── Mobile overrides ── */
+
+.is-mobile .simple-citations-mobile-wrap {
+	flex-wrap: wrap;
+}
+
+.is-mobile .simple-citations-mobile-wrap .setting-item-control textarea {
+	width: 100% !important;
+}
+
+.is-mobile .simple-citations-merge-list > .setting-item {
+	flex-direction: row !important;
+	align-items: center !important;
+}
+
+.is-mobile .simple-citations-base-props-list > .setting-item > .setting-item-control,
+.is-mobile .simple-citations-merge-list > .setting-item > .setting-item-control {
+	width: auto !important;
+}
+
+.is-mobile .simple-citations-base-props-list > .setting-item > .setting-item-control select,
+.is-mobile .simple-citations-merge-list > .setting-item > .setting-item-control select {
+	width: 120px;
+}

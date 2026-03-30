@@ -1,30 +1,42 @@
 export interface SimpleCitationsSettings {
-	jsonPath: string;
+	jsonPaths: string[];
+	jsonNames: string[];
 	folderPath: string;
 	includeAuthorTag: boolean;
 	includeJournalTag: boolean;
+	includeBibliography: boolean;
+
 	optionalFields: string;
 	includeAbstract: boolean;
 	templatePath: string;
 	autoAddCitations: boolean;
+	autoSyncCitations: boolean;
 	autoUpdateCitations: boolean;
-	jsonUpdatedTime: number;
+	mergeStrategies: Record<string, string>;
+	showBaseProperties: boolean;
+	jsonUpdatedTimes: Record<string, number>;
 	inputPandocPath: string;
 	pandocOutputPath: string;
 	pandocArgs: string;
 }
 
 export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
-	jsonPath: "",
+	jsonPaths: [],
+	jsonNames: [],
 	folderPath: "",
 	includeAuthorTag: false,
 	includeJournalTag: false,
+	includeBibliography: false,
+
 	optionalFields: "",
 	includeAbstract: false,
 	templatePath: "",
 	autoAddCitations: false,
+	autoSyncCitations: false,
 	autoUpdateCitations: false,
-	jsonUpdatedTime: new Date().getTime(),
+	mergeStrategies: {},
+	showBaseProperties: false,
+	jsonUpdatedTimes: {},
 	inputPandocPath: "",
 	pandocOutputPath: "",
 	pandocArgs: "-f markdown+hard_line_breaks"
