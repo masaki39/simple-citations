@@ -60,7 +60,10 @@ export async function updateFrontMatter(
 		}
 		fm.journal = item['container-title'];
 		fm.doi = item['DOI'] ? `https://doi.org/${item['DOI']}` : "";
-		fm.zotero = "zotero://select/items/@" + item['id'];
+		const groupMatch = item['zotero_uri']?.match(/\/groups\/(\d+)/);
+		fm.zotero = groupMatch
+			? `zotero://select/groups/${groupMatch[1]}/items/@${item['id']}`
+			: `zotero://select/items/@${item['id']}`;
 		if (settings.includeBibliography && item['_source_files'] && Array.isArray(item['_source_files'])) {
 			fm.bibliography = item['_source_files'];
 		} else {

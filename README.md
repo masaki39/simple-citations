@@ -69,6 +69,18 @@ The result file(docx) is as follows:
 > [!warning]
 > Citekeys containing `#` `^` `[` `]` `|` `\` `/` `:` will be skipped as these characters are not allowed in Obsidian filenames. Check the console log if items are missing.
 
+## 📚 Group libraries support
+
+By default, the Zotero link in each literature note uses `zotero://select/items/@citekey`, which only works for personal libraries. If you use Zotero **group libraries**, you need to add the following postscript in Better BibTeX to export the library URI:
+
+```javascript
+if (Translator.BetterCSLJSON) {
+  csl.zotero_uri = zotero.uri;
+}
+```
+
+When `zotero_uri` is present and contains a group ID, the plugin automatically generates the correct link: `zotero://select/groups/{groupId}/items/@citekey`. No additional plugin settings are required.
+
 ## ➕ Additional options
 
 > [!tip]
@@ -140,6 +152,7 @@ if (Translator.BetterCSLJSON) {
   });
 
   csl.collections = collections;
+  csl.zotero_uri = zotero.uri;
 }
 ```
 
@@ -168,7 +181,9 @@ if (Translator.BetterCSLJSON) {
     if (p) collections.push(library + ": " + p);
   });
 
+  
   csl.collections = collections.length > 0 ? collections : [library];
+  csl.zotero_uri = zotero.uri;
 }
 ```
 
