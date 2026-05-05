@@ -20,6 +20,7 @@ export interface SimpleCitationsSettings {
 	pandocArgs: string;
 	includeBbtPdf: boolean;
 	includeBbtCollections: boolean;
+	pdfimagesPath: string;
 }
 
 export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
@@ -44,4 +45,5 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	pandocArgs: "-f markdown+hard_line_breaks",
 	includeBbtPdf: true,
 	includeBbtCollections: true,
+	pdfimagesPath: "",
 }

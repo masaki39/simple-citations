@@ -9,6 +9,7 @@ import { SyncCitations } from './commands/syncCitations';
 import { convertToPandocFormat } from './utils/convertToPandocFormat';
 import { loadBibliographyData, isBetterBibTeXFormat } from './utils/loadBibliographyData';
 import { checkRequiredFiles } from './utils/checkRequiredFiles';
+import { registerPdfCommands } from './commands/pdfCommands';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -26,6 +27,7 @@ export default class SimpleCitations extends Plugin {
 		this.addCitations.registerCommands(this);
 		this.updateCitations.registerCommands(this);
 		this.syncCitations.registerCommands(this);
+		registerPdfCommands(this, this.app, () => this.settings);
 
 		if (Platform.isDesktop) this.addCommand({
 			id: 'execute-pandoc',

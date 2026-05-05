@@ -354,7 +354,12 @@ const bbtPropsContainer = containerEl.createDiv();
 		}
 		new Setting(containerEl)
 			.setName('Pandoc path')
-			.setDesc('On Mac/Linux use the output of `which pandoc` in terminal; on Windows use the output of `where pandoc` in cmd.')
+			.setDesc((() => {
+				const f = document.createDocumentFragment();
+				f.createEl('a', { text: 'Pandoc', href: 'https://pandoc.org' });
+				f.appendText(' must be installed. Mac/Linux: `which pandoc`, Windows: `where pandoc`.');
+				return f;
+			})())
 			.addText(text => text
 				.setPlaceholder('pandoc')
 				.setValue(this.plugin.settings.inputPandocPath)
@@ -388,6 +393,26 @@ const bbtPropsContainer = containerEl.createDiv();
 			});
 		pandocArgsSetting.settingEl.addClass('simple-citations-mobile-wrap');
 
+		const popplerHeading = new Setting(containerEl).setName('Poppler Settings').setHeading();
+		if (Platform.isMobile) {
+			popplerHeading.descEl.createSpan({ text: 'Note: ', cls: 'simple-citations-note-label' });
+			popplerHeading.descEl.appendText('Poppler is only available on desktop.');
+		}
+		new Setting(containerEl)
+			.setName('pdfimages path')
+			.setDesc((() => {
+				const f = document.createDocumentFragment();
+				f.createEl('a', { text: 'Poppler', href: 'https://poppler.freedesktop.org' });
+				f.appendText(' must be installed. Mac/Linux: `which pdfimages`, Windows: `where pdfimages`.');
+				return f;
+			})())
+			.addText(text => text
+				.setPlaceholder('pdfimages')
+				.setValue(this.plugin.settings.pdfimagesPath)
+				.onChange(async (value) => {
+					this.plugin.settings.pdfimagesPath = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 
 
