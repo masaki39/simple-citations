@@ -18,6 +18,8 @@ export interface SimpleCitationsSettings {
 	inputPandocPath: string;
 	pandocOutputPath: string;
 	pandocArgs: string;
+	includeBbtPdf: boolean;
+	includeBbtCollections: boolean;
 }
 
 export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
@@ -39,5 +41,7 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	jsonUpdatedTimes: {},
 	inputPandocPath: "",
 	pandocOutputPath: "",
-	pandocArgs: "-f markdown+hard_line_breaks"
+	pandocArgs: "-f markdown+hard_line_breaks",
+	includeBbtPdf: true,
+	includeBbtCollections: true,
 }
