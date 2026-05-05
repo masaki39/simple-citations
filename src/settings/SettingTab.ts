@@ -1,9 +1,10 @@
-import { App, Notice, Platform, PluginSettingTab, Setting, setIcon } from "obsidian";
+import { App, Notice, Platform, PluginSettingTab, Setting, normalizePath, setIcon } from "obsidian";
 import SimpleCitations from "../main";
 import { updateSettingJsonStatus, updateSettingFolderStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
 import { JsonFileSuggest, FolderSuggest } from "./FileSuggest";
 import { getStrategy, getDefaultStrategy } from "../utils/mergeStrategies";
 import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
+import { isBetterBibTeXFormat } from "../utils/loadBibliographyData";
 
 export class SimpleCitationsSettingTab extends PluginSettingTab {
 	plugin: SimpleCitations;
@@ -24,7 +25,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		// Bibliography file paths — single setting block
 		const bibSetting = new Setting(containerEl)
 			.setName('Bibliography file paths')
-			.setDesc('Better CSL JSON files. Earlier entries have higher priority when duplicate citation keys exist.')
+			.setDesc('Better CSL JSON or BetterBibTeX JSON files. Earlier entries have higher priority when duplicate citation keys exist.')
 			.addButton(button => button
 				.setButtonText('+ Add file')
 				.setCta()
@@ -263,7 +264,33 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.includeBibliography = value;
 					await this.plugin.saveSettings();
 				}));
-const optionalFieldsSetting = new Setting(containerEl)
+const bbtPropsContainer = containerEl.createDiv();
+		void (async () => {
+			const hasBbt = await this.detectBbtFiles();
+			if (!hasBbt) return;
+
+			new Setting(bbtPropsContainer)
+				.setName('Include PDF paths (BetterBibTeX JSON)')
+				.setDesc('Automatically adds a "pdf" property with local PDF paths extracted from attachments.')
+				.addToggle(toggle => toggle
+					.setValue(this.plugin.settings.includeBbtPdf)
+					.onChange(async (value) => {
+						this.plugin.settings.includeBbtPdf = value;
+						await this.plugin.saveSettings();
+					}));
+
+			new Setting(bbtPropsContainer)
+				.setName('Include collections (BetterBibTeX JSON)')
+				.setDesc('Automatically adds a "collections" property with Zotero collection names the item belongs to.')
+				.addToggle(toggle => toggle
+					.setValue(this.plugin.settings.includeBbtCollections)
+					.onChange(async (value) => {
+						this.plugin.settings.includeBbtCollections = value;
+						await this.plugin.saveSettings();
+					}));
+		})();
+
+		const optionalFieldsSetting = new Setting(containerEl)
 			.setName('Optional fields')
 			.setDesc('Set optional fields from JSON. (Separate by line breaks, 1st level only)')
 			.addTextArea(textArea => textArea
@@ -327,7 +354,12 @@ const optionalFieldsSetting = new Setting(containerEl)
 		}
 		new Setting(containerEl)
 			.setName('Pandoc path')
-			.setDesc('On Mac/Linux use the output of `which pandoc` in terminal; on Windows use the output of `where pandoc` in cmd.')
+			.setDesc((() => {
+				const f = document.createDocumentFragment();
+				f.createEl('a', { text: 'Pandoc', href: 'https://pandoc.org' });
+				f.appendText(' must be installed. Mac/Linux: `which pandoc`, Windows: `where pandoc`.');
+				return f;
+			})())
 			.addText(text => text
 				.setPlaceholder('pandoc')
 				.setValue(this.plugin.settings.inputPandocPath)
@@ -361,9 +393,43 @@ const optionalFieldsSetting = new Setting(containerEl)
 			});
 		pandocArgsSetting.settingEl.addClass('simple-citations-mobile-wrap');
 
+		const popplerHeading = new Setting(containerEl).setName('Poppler Settings').setHeading();
+		if (Platform.isMobile) {
+			popplerHeading.descEl.createSpan({ text: 'Note: ', cls: 'simple-citations-note-label' });
+			popplerHeading.descEl.appendText('Poppler is only available on desktop.');
+		}
+		new Setting(containerEl)
+			.setName('pdfimages path')
+			.setDesc((() => {
+				const f = document.createDocumentFragment();
+				f.createEl('a', { text: 'Poppler', href: 'https://poppler.freedesktop.org' });
+				f.appendText(' must be installed. Mac/Linux: `which pdfimages`, Windows: `where pdfimages`.');
+				return f;
+			})())
+			.addText(text => text
+				.setPlaceholder('pdfimages')
+				.setValue(this.plugin.settings.pdfimagesPath)
+				.onChange(async (value) => {
+					this.plugin.settings.pdfimagesPath = value;
+					await this.plugin.saveSettings();
+				}));
 	}
 
 
+
+	private async detectBbtFiles(): Promise<boolean> {
+		for (const path of this.plugin.settings.jsonPaths) {
+			if (!path) continue;
+			const file = this.app.vault.getFileByPath(normalizePath(path));
+			if (!file) continue;
+			try {
+				const contents = await this.app.vault.cachedRead(file);
+				const data = JSON.parse(contents);
+				if (isBetterBibTeXFormat(data)) return true;
+			} catch {}
+		}
+		return false;
+	}
 
 	private renderMergeStrategies(container: HTMLElement) {
 		container.empty();
@@ -411,7 +477,7 @@ const optionalFieldsSetting = new Setting(containerEl)
 		});
 		new Setting(baseWrapper)
 			.setName('Base properties')
-			.setDesc('Built-in properties managed by the plugin. All default to Priority.')
+			.setDesc('Built-in properties managed by the plugin. Defaults: collections → Merge, others → Priority.')
 			.addToggle(t => t
 				.setValue(this.plugin.settings.showBaseProperties)
 				.onChange(async (value) => {

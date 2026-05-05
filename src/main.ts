@@ -7,8 +7,9 @@ import { AddCitations } from './commands/addCitations';
 import { UpdateCitations } from './commands/updateCitations';
 import { SyncCitations } from './commands/syncCitations';
 import { convertToPandocFormat } from './utils/convertToPandocFormat';
-import { loadBibliographyData } from './utils/loadBibliographyData';
+import { loadBibliographyData, isBetterBibTeXFormat } from './utils/loadBibliographyData';
 import { checkRequiredFiles } from './utils/checkRequiredFiles';
+import { registerPdfCommands } from './commands/pdfCommands';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -26,6 +27,7 @@ export default class SimpleCitations extends Plugin {
 		this.addCitations.registerCommands(this);
 		this.updateCitations.registerCommands(this);
 		this.syncCitations.registerCommands(this);
+		registerPdfCommands(this, this.app, () => this.settings);
 
 		if (Platform.isDesktop) this.addCommand({
 			id: 'execute-pandoc',
@@ -56,11 +58,24 @@ export default class SimpleCitations extends Plugin {
 				const PandocOutputFile = PandocOutputPath + "/" + CurrentFileName?.replace(/\.md$/, ".docx"); // output file
 				const PandocExtraArgs = this.settings.pandocArgs ? this.settings.pandocArgs.split(/[\s\n]+/) : [];
 
-				// build bibliography args for all json files
+				// build bibliography args — BBT JSON files are excluded (not supported by citeproc)
 				const bibArgs: string[] = [];
 				for (const path of this.settings.jsonPaths) {
 					if (!path) continue;
-					bibArgs.push("--bibliography", BasePath + "/" + normalizePath(path));
+					const normalizedPath = normalizePath(path);
+					const bibFile = this.app.vault.getFileByPath(normalizedPath);
+					if (!bibFile) continue;
+					const bibContents = await this.app.vault.cachedRead(bibFile);
+					let bibParsed: unknown;
+					try { bibParsed = JSON.parse(bibContents); } catch { continue; }
+					if (isBetterBibTeXFormat(bibParsed)) continue;
+					bibArgs.push("--bibliography", BasePath + "/" + normalizedPath);
+				}
+
+				if (bibArgs.length === 0) {
+					new Notice('Pandoc execution cancelled: no CSL JSON bibliography files found. BetterBibTeX JSON is not supported by citeproc.');
+					await this.app.vault.modify(activeFile, content);
+					return;
 				}
 
 				const PandocArgs = [
