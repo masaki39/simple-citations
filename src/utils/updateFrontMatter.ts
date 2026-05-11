@@ -31,6 +31,15 @@ function extractValuesCsl(item: any): Record<string, any> {
 	return vals;
 }
 
+export function parseBbtYear(date: string): number | undefined {
+	const trimmed = date.trim();
+	const isoMatch = trimmed.match(/^(\d{4})/);
+	const slashMatch = !isoMatch ? trimmed.match(/^\d{1,2}\/(\d{4})/) : null;
+	const yearStr = isoMatch?.[1] ?? slashMatch?.[1];
+	const year = yearStr ? parseInt(yearStr, 10) : NaN;
+	return isNaN(year) ? undefined : year;
+}
+
 function extractValuesBbt(item: any): Record<string, any> {
 	const vals: Record<string, any> = {};
 	vals.title = item['title'];
@@ -42,8 +51,8 @@ function extractValuesBbt(item: any): Record<string, any> {
 		if (authors.length > 0) vals.authors = Array.from(new Set(authors));
 	}
 	if (typeof item['date'] === 'string') {
-		const year = parseInt(item['date'].slice(0, 4), 10);
-		if (!isNaN(year)) vals.year = year;
+		const year = parseBbtYear(item['date']);
+		if (year !== undefined) vals.year = year;
 	}
 	vals.journal = item['publicationTitle'];
 	if (item['DOI']) vals.doi = `https://doi.org/${item['DOI']}`;
