@@ -42,11 +42,11 @@ export class AddCitations {
 		let fileCount: number = 0;
 
 		let notice: Notice | null = null;
-		let intervalId: NodeJS.Timeout | null = null;
+		let intervalId: number | null = null;
 
 		// check json file
 		for (let i = 0; i < mergedData.length; i++) {
-			const citekey = mergedData[i]?.['citation-key'];
+			const citekey = mergedData[i]?.['citation-key'] ?? '';
 			if (!validateCitekey(citekey)) continue;
 			const targetFileName = "@" + citekey + ".md";
 			const targetFile = files.get(targetFileName);
@@ -59,25 +59,25 @@ export class AddCitations {
 					this.app,
 					newFile,
 					templateContent,
-					this.settings.includeAbstract ? mergedData[i]['abstract'] : ""
+					this.settings.includeAbstract ? mergedData[i]['abstract'] ?? '' : ""
 				);
 				fileCount ++;
 				if (fileCount === 1) {
 					notice = new Notice(`${fileCount} file(s) added.`, 0);
-					intervalId = setInterval(() => {
+					intervalId = window.setInterval(() => {
 						notice?.setMessage(`${fileCount} file(s) added.`);
 					}, 200);
 				}
 			}
 		}
 		if (intervalId) {
-			clearInterval(intervalId);
+			window.clearInterval(intervalId);
 		}
 		if (notice) {
 			const endTime = performance.now();
 			const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
 			notice.setMessage(`${fileCount} file(s) added.\nTime taken: ${elapsedTime} seconds`);
-			setTimeout(() => {
+			window.setTimeout(() => {
 				notice?.hide();
 			}, 3000);
 		}

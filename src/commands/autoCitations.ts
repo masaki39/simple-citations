@@ -23,11 +23,11 @@ function isBibliographyUpdated(settings: SimpleCitationsSettings, file: TFile): 
 export function autoAddCitations(app: App, settings: SimpleCitationsSettings, file: TFile) {
 	if (!settings.autoAddCitations) return;
 	if (!isBibliographyUpdated(settings, file)) return;
-	(app as any).commands.executeCommandById('simple-citations:add-citations');
+	(app as App & { commands: { executeCommandById(id: string): void } }).commands.executeCommandById('simple-citations:add-citations');
 }
 
 export function autoSyncCitations(app: App, settings: SimpleCitationsSettings, file: TFile) {
 	if (!settings.autoSyncCitations) return;
 	if (!isBibliographyUpdated(settings, file)) return;
-	(app as any).commands.executeCommandById('simple-citations:sync-citations');
+	(app as App & { commands: { executeCommandById(id: string): void } }).commands.executeCommandById('simple-citations:sync-citations');
 }

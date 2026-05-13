@@ -1,6 +1,7 @@
 import { App, TFile } from 'obsidian';
 import { SimpleCitationsSettings } from '../settings/settings';
 import { getStrategy, mergeValues } from './mergeStrategies';
+import { BibEntry } from './loadBibliographyData';
 
 /** Base frontmatter properties managed by the plugin. */
 export const BASE_PROPERTIES: readonly string[] = [
@@ -13,18 +14,27 @@ export const BASE_PROPERTIES: readonly string[] = [
 	'collections',
 ];
 
-function extractValuesCsl(item: any): Record<string, any> {
-	const vals: Record<string, any> = {};
+interface CslAuthor {
+	literal?: string;
+	given?: string;
+	family?: string;
+}
+
+function extractValuesCsl(item: BibEntry): Record<string, unknown> {
+	const vals: Record<string, unknown> = {};
 	vals.title = item['title'];
 	if (item['author'] && Array.isArray(item['author'])) {
 		vals.authors = Array.from(new Set(
-			item['author'].map((a: any) =>
+			(item['author'] as CslAuthor[]).map(a =>
 				(a.literal || `${a.given ?? ""} ${a.family ?? ""}`).trim()
 			)
 		));
 	}
-	if (item['issued'] && Array.isArray(item['issued']['date-parts']) && item['issued']['date-parts'][0] && !isNaN(item['issued']['date-parts'][0][0])) {
-		vals.year = Number(item['issued']['date-parts'][0][0]);
+	if (item['issued'] && Array.isArray((item['issued'] as Record<string, unknown>)['date-parts'])) {
+		const dateParts = ((item['issued'] as Record<string, unknown>)['date-parts'] as unknown[][])[0];
+		if (dateParts && !isNaN(dateParts[0] as number)) {
+			vals.year = Number(dateParts[0]);
+		}
 	}
 	vals.journal = item['container-title'];
 	if (item['DOI']) vals.doi = `https://doi.org/${item['DOI']}`;
@@ -40,13 +50,20 @@ export function parseBbtYear(date: string): number | undefined {
 	return isNaN(year) ? undefined : year;
 }
 
-function extractValuesBbt(item: any): Record<string, any> {
-	const vals: Record<string, any> = {};
+interface BbtCreator {
+	creatorType?: string;
+	name?: string;
+	firstName?: string;
+	lastName?: string;
+}
+
+function extractValuesBbt(item: BibEntry): Record<string, unknown> {
+	const vals: Record<string, unknown> = {};
 	vals.title = item['title'];
 	if (Array.isArray(item['creators'])) {
-		const authors = item['creators']
-			.filter((c: any) => c.creatorType === 'author')
-			.map((c: any) => (c.name?.trim() || `${c.firstName ?? ""} ${c.lastName ?? ""}`).trim())
+		const authors = (item['creators'] as BbtCreator[])
+			.filter(c => c.creatorType === 'author')
+			.map(c => (c.name?.trim() || `${c.firstName ?? ""} ${c.lastName ?? ""}`).trim())
 			.filter(Boolean);
 		if (authors.length > 0) vals.authors = Array.from(new Set(authors));
 	}
@@ -59,7 +76,7 @@ function extractValuesBbt(item: any): Record<string, any> {
 	return vals;
 }
 
-function extractValues(item: any): Record<string, any> {
+function extractValues(item: BibEntry): Record<string, unknown> {
 	return item['_bbt'] ? extractValuesBbt(item) : extractValuesCsl(item);
 }
 
@@ -67,7 +84,7 @@ export async function updateFrontMatter(
 	app: App,
 	settings: SimpleCitationsSettings,
 	targetFile: TFile,
-	item: any,
+	item: BibEntry,
 	fullSync: boolean = false
 ) {
 	await app.fileManager.processFrontMatter(targetFile, (fm) => {
@@ -103,17 +120,20 @@ export async function updateFrontMatter(
 			fm.title = item['title'];
 			if (item['author'] && Array.isArray(item['author'])) {
 				fm.authors = Array.from(new Set(
-					item['author'].map((author: any) =>
+					(item['author'] as CslAuthor[]).map(author =>
 						(author.literal || `${author.given ?? ""} ${author.family ?? ""}`).trim()
 					)
 				));
 			}
-			if (item['issued'] && Array.isArray(item['issued']['date-parts']) && item['issued']['date-parts'][0] && !isNaN(item['issued']['date-parts'][0][0])) {
-				fm.year = Number(item['issued']['date-parts'][0][0]);
+			if (item['issued'] && Array.isArray((item['issued'] as Record<string, unknown>)['date-parts'])) {
+				const dateParts = ((item['issued'] as Record<string, unknown>)['date-parts'] as unknown[][])[0];
+				if (dateParts && !isNaN(dateParts[0] as number)) {
+					fm.year = Number(dateParts[0]);
+				}
 			}
 			fm.journal = item['container-title'];
 			fm.doi = item['DOI'] ? `https://doi.org/${item['DOI']}` : "";
-			const groupMatch = item['zotero_uri']?.match(/\/groups\/(\d+)/);
+			const groupMatch = (item['zotero_uri'] as string | undefined)?.match(/\/groups\/(\d+)/);
 			fm.zotero = groupMatch
 				? `zotero://select/groups/${groupMatch[1]}/items/@${item['id']}`
 				: `zotero://select/items/@${item['id']}`;
@@ -132,7 +152,7 @@ export async function updateFrontMatter(
 		// add or remove author tag
 		if (fm.authors && fm.authors.length > 0) {
 			let authorTag = fm.authors[0]
-				.replace(/[&:;,'"\\?!<>|()\[\]{}\.\s]/g, '_')
+				.replace(/[&:;,'"\\?!<>|()[\]{}.\s]/g, '_')
 				.replace(/_+/g, '_')
 				.replace(/^_+|_+$/g, '');
 			authorTag = `author/${authorTag}`;
@@ -150,7 +170,7 @@ export async function updateFrontMatter(
 		// add or remove journal tag
 		if (fm.journal) {
 			let journalTag = fm.journal
-				.replace(/[&:;,'"\\?!<>|()\[\]{}\.\s]/g, '_')
+				.replace(/[&:;,'"\\?!<>|()[\]{}.\s]/g, '_')
 				.replace(/_+/g, '_')
 				.replace(/^_+|_+$/g, '');
 			journalTag = `journal/${journalTag}`;
@@ -176,7 +196,7 @@ export async function updateFrontMatter(
 				if (
 					typeof value === "string" ||
 					typeof value === "number" ||
-					(Array.isArray(value) && value.every((v: any) =>
+					(Array.isArray(value) && value.every((v: unknown) =>
 						typeof v === "string" || typeof v === "number"
 					))
 				) {
@@ -186,7 +206,7 @@ export async function updateFrontMatter(
 		}
 
 		// Merge from duplicate entries (after all priority values are set)
-		const duplicates: any[] = item['_duplicates'] || [];
+		const duplicates: BibEntry[] = item['_duplicates'] as BibEntry[] || [];
 		for (const dup of duplicates) {
 			// Base properties
 			const dupVals = extractValues(dup);
@@ -204,7 +224,7 @@ export async function updateFrontMatter(
 					if (
 						typeof value === "string" ||
 						typeof value === "number" ||
-						(Array.isArray(value) && value.every((v: any) =>
+						(Array.isArray(value) && value.every((v: unknown) =>
 							typeof v === "string" || typeof v === "number"
 						))
 					) {

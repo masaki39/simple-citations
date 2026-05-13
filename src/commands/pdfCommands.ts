@@ -1,8 +1,5 @@
 import { App, Notice, Plugin, MarkdownView, Editor, Platform } from 'obsidian';
 import { SimpleCitationsSettings } from '../settings/settings';
-import { spawn } from 'child_process';
-import { copyFile } from 'fs/promises';
-import { basename, join } from 'path';
 
 function resolvePdfPaths(app: App, view: MarkdownView): string[] | null {
 	const file = view.file;
@@ -34,12 +31,14 @@ export function registerPdfCommands(
 			const pdfPaths = resolvePdfPaths(app, view);
 			if (!pdfPaths) return;
 			try {
+				const { copyFile } = require('fs/promises') as typeof import('fs/promises');
+				const { basename, join } = require('path') as typeof import('path');
 				for (const src of pdfPaths) {
 					await copyFile(src, join(settings.pandocOutputPath, basename(src)));
 				}
 				new Notice('PDF export completed.');
 			} catch (error) {
-				new Notice('PDF export failed: ' + error.message);
+				new Notice('PDF export failed: ' + (error as Error).message);
 			}
 		}
 	});
@@ -57,6 +56,8 @@ export function registerPdfCommands(
 			if (!pdfPaths) return;
 			const pdfimagesPath = settings.pdfimagesPath || 'pdfimages';
 			try {
+				const { spawn } = require('child_process') as typeof import('child_process');
+				const { join } = require('path') as typeof import('path');
 				for (let i = 0; i < pdfPaths.length; i++) {
 					const prefix = join(settings.pandocOutputPath, `pdf${i + 1}`);
 					await new Promise<void>((resolve, reject) => {
@@ -70,7 +71,7 @@ export function registerPdfCommands(
 				}
 				new Notice('PDF image export completed.');
 			} catch (error) {
-				new Notice('PDF image export failed: ' + error.message);
+				new Notice('PDF image export failed: ' + (error as Error).message);
 			}
 		}
 	});

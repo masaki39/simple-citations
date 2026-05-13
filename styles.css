@@ -97,11 +97,11 @@
 	margin-bottom: 0;
 }
 
-.simple-citations-base-props-list > .setting-item {
+body .simple-citations-base-props-list > .setting-item {
 	border-top: 1px solid var(--background-modifier-border);
 	border-radius: 0;
-	flex-direction: row !important;
-	align-items: center !important;
+	flex-direction: row;
+	align-items: center;
 	margin-bottom: 0;
 }
 
@@ -117,24 +117,31 @@
 	font-weight: var(--font-semibold);
 }
 
+/* ── Pandoc args textarea ── */
+
+.simple-citations-pandoc-args-textarea {
+	height: 200px;
+	width: 200px;
+}
+
 /* ── Mobile overrides ── */
 
 .is-mobile .simple-citations-mobile-wrap {
 	flex-wrap: wrap;
 }
 
-.is-mobile .simple-citations-mobile-wrap .setting-item-control textarea {
-	width: 100% !important;
+body.is-mobile .simple-citations-mobile-wrap .setting-item-control textarea {
+	width: 100%;
 }
 
-.is-mobile .simple-citations-merge-list > .setting-item {
-	flex-direction: row !important;
-	align-items: center !important;
+body.is-mobile .simple-citations-merge-list > .setting-item {
+	flex-direction: row;
+	align-items: center;
 }
 
-.is-mobile .simple-citations-base-props-list > .setting-item > .setting-item-control,
-.is-mobile .simple-citations-merge-list > .setting-item > .setting-item-control {
-	width: auto !important;
+body.is-mobile .simple-citations-base-props-list > .setting-item > .setting-item-control,
+body.is-mobile .simple-citations-merge-list > .setting-item > .setting-item-control {
+	width: auto;
 }
 
 .is-mobile .simple-citations-base-props-list > .setting-item > .setting-item-control select,

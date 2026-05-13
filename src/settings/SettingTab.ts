@@ -20,7 +20,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
-		new Setting(containerEl).setName('Basic Settings').setHeading();
+		new Setting(containerEl).setName('Basic').setHeading();
 
 		// Bibliography file paths — single setting block
 		const bibSetting = new Setting(containerEl)
@@ -96,8 +96,8 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 
 				const save = async () => {
 					// Delay to let the other input's blur not race
-					await new Promise(r => setTimeout(r, 100));
-					if (!pathInput.value && !document.activeElement?.closest('.simple-citations-bib-row')) {
+					await new Promise(r => window.setTimeout(r, 100));
+					if (!pathInput.value && !activeDocument.activeElement?.closest('.simple-citations-bib-row')) {
 						// Remove if path is empty and focus left the row
 						this.plugin.settings.jsonPaths.splice(idx, 1);
 						this.plugin.settings.jsonNames.splice(idx, 1);
@@ -119,13 +119,13 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.jsonNames[idx] = nameInput.value;
 					await this.plugin.saveSettings();
 					// Only re-render if focus left this row entirely
-					if (!document.activeElement?.closest('.simple-citations-bib-row')) {
+					if (!activeDocument.activeElement?.closest('.simple-citations-bib-row')) {
 						this.display();
 					}
 				};
 
-				nameInput.addEventListener('blur', save);
-				pathInput.addEventListener('blur', save);
+				nameInput.addEventListener('blur', () => { void save(); });
+				pathInput.addEventListener('blur', () => { void save(); });
 				nameInput.addEventListener('keydown', (e) => {
 					if (e.key === 'Enter') { pathInput.focus(); }
 				});
@@ -148,12 +148,14 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 			if (i > 0) {
 				const upBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Move up' } });
 				setIcon(upBtn, 'arrow-up');
-				upBtn.addEventListener('click', async () => {
-					const names = this.plugin.settings.jsonNames;
-					[paths[idx - 1], paths[idx]] = [paths[idx], paths[idx - 1]];
-					[names[idx - 1], names[idx]] = [names[idx], names[idx - 1]];
-					await this.plugin.saveSettings();
-					this.display();
+				upBtn.addEventListener('click', () => {
+					void (async () => {
+						const names = this.plugin.settings.jsonNames;
+						[paths[idx - 1], paths[idx]] = [paths[idx], paths[idx - 1]];
+						[names[idx - 1], names[idx]] = [names[idx], names[idx - 1]];
+						await this.plugin.saveSettings();
+						this.display();
+					})();
 				});
 			}
 
@@ -161,12 +163,14 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 			if (i < paths.length - 1) {
 				const downBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Move down' } });
 				setIcon(downBtn, 'arrow-down');
-				downBtn.addEventListener('click', async () => {
-					const names = this.plugin.settings.jsonNames;
-					[paths[idx], paths[idx + 1]] = [paths[idx + 1], paths[idx]];
-					[names[idx], names[idx + 1]] = [names[idx + 1], names[idx]];
-					await this.plugin.saveSettings();
-					this.display();
+				downBtn.addEventListener('click', () => {
+					void (async () => {
+						const names = this.plugin.settings.jsonNames;
+						[paths[idx], paths[idx + 1]] = [paths[idx + 1], paths[idx]];
+						[names[idx], names[idx + 1]] = [names[idx + 1], names[idx]];
+						await this.plugin.saveSettings();
+						this.display();
+					})();
 				});
 			}
 
@@ -178,11 +182,13 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 			// Delete
 			const delBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Remove' } });
 			setIcon(delBtn, 'x');
-			delBtn.addEventListener('click', async () => {
-				this.plugin.settings.jsonPaths.splice(idx, 1);
-				this.plugin.settings.jsonNames.splice(idx, 1);
-				await this.plugin.saveSettings();
-				this.display();
+			delBtn.addEventListener('click', () => {
+				void (async () => {
+					this.plugin.settings.jsonPaths.splice(idx, 1);
+					this.plugin.settings.jsonNames.splice(idx, 1);
+					await this.plugin.saveSettings();
+					this.display();
+				})();
 			});
 		}
 
@@ -193,7 +199,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				const container = text.inputEl.parentElement;
 				let statusSpan: HTMLElement | null = null;
 				if (container) {
-					statusSpan = container.insertBefore(document.createElement('span'), text.inputEl);
+					statusSpan = container.insertBefore(activeDocument.createElement('span'), text.inputEl);
 
 					updateSettingFolderStatus(this.app, statusSpan, this.plugin.settings.folderPath);
 				}
@@ -264,7 +270,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					this.plugin.settings.includeBibliography = value;
 					await this.plugin.saveSettings();
 				}));
-const bbtPropsContainer = containerEl.createDiv();
+		const bbtPropsContainer = containerEl.createDiv();
 		void (async () => {
 			const hasBbt = await this.detectBbtFiles();
 			if (!hasBbt) return;
@@ -331,7 +337,7 @@ const bbtPropsContainer = containerEl.createDiv();
 				const container = text.inputEl.parentElement;
 				let statusSpan: HTMLElement | null = null;
 				if (container) {
-					statusSpan = container.insertBefore(document.createElement('span'), text.inputEl);
+					statusSpan = container.insertBefore(activeDocument.createElement('span'), text.inputEl);
 
 					updateSettingTemplateStatus(this.app, statusSpan, this.plugin.settings.templatePath);
 				}
@@ -346,7 +352,7 @@ const bbtPropsContainer = containerEl.createDiv();
 						}
 					});
 			});
-		const pandocHeading = new Setting(containerEl).setName('Pandoc Settings').setHeading();
+		const pandocHeading = new Setting(containerEl).setName('Pandoc').setHeading();
 		if (Platform.isMobile) {
 			const descEl = pandocHeading.descEl;
 			descEl.createSpan({ text: 'Note: ', cls: 'simple-citations-note-label' });
@@ -355,7 +361,7 @@ const bbtPropsContainer = containerEl.createDiv();
 		new Setting(containerEl)
 			.setName('Pandoc path')
 			.setDesc((() => {
-				const f = document.createDocumentFragment();
+				const f = activeDocument.createDocumentFragment();
 				f.createEl('a', { text: 'Pandoc', href: 'https://pandoc.org' });
 				f.appendText(' must be installed. Mac/Linux: `which pandoc`, Windows: `where pandoc`.');
 				return f;
@@ -388,12 +394,11 @@ const bbtPropsContainer = containerEl.createDiv();
 						this.plugin.settings.pandocArgs = value;
 						await this.plugin.saveSettings();
 					});
-				textArea.inputEl.style.height = '200px';
-				textArea.inputEl.style.width = '200px';
+				textArea.inputEl.addClass('simple-citations-pandoc-args-textarea');
 			});
 		pandocArgsSetting.settingEl.addClass('simple-citations-mobile-wrap');
 
-		const popplerHeading = new Setting(containerEl).setName('Poppler Settings').setHeading();
+		const popplerHeading = new Setting(containerEl).setName('Poppler').setHeading();
 		if (Platform.isMobile) {
 			popplerHeading.descEl.createSpan({ text: 'Note: ', cls: 'simple-citations-note-label' });
 			popplerHeading.descEl.appendText('Poppler is only available on desktop.');
@@ -401,7 +406,7 @@ const bbtPropsContainer = containerEl.createDiv();
 		new Setting(containerEl)
 			.setName('pdfimages path')
 			.setDesc((() => {
-				const f = document.createDocumentFragment();
+				const f = activeDocument.createDocumentFragment();
 				f.createEl('a', { text: 'Poppler', href: 'https://poppler.freedesktop.org' });
 				f.appendText(' must be installed. Mac/Linux: `which pdfimages`, Windows: `where pdfimages`.');
 				return f;
@@ -426,7 +431,7 @@ const bbtPropsContainer = containerEl.createDiv();
 				const contents = await this.app.vault.cachedRead(file);
 				const data = JSON.parse(contents);
 				if (isBetterBibTeXFormat(data)) return true;
-			} catch {}
+			} catch { /* ignore parse errors */ }
 		}
 		return false;
 	}

@@ -25,9 +25,18 @@ interface BbtItem {
 	[key: string]: unknown;
 }
 
+export interface BibEntry {
+	'citation-key'?: string;
+	abstract?: string;
+	_bbt?: boolean;
+	_source_files?: string[];
+	_duplicates?: BibEntry[];
+	[key: string]: unknown;
+}
+
 export interface BibliographyResult {
 	jsonFiles: TFile[];
-	mergedData: any[];
+	mergedData: BibEntry[];
 }
 
 export function isBetterBibTeXFormat(data: unknown): data is BbtJson {
@@ -78,8 +87,8 @@ export async function loadBibliographyData(
 	jsonNames: string[]
 ): Promise<BibliographyResult> {
 	const jsonFiles: TFile[] = [];
-	const mergedData: any[] = [];
-	const seenKeys = new Map<string, any>();
+	const mergedData: BibEntry[] = [];
+	const seenKeys = new Map<string, BibEntry>();
 
 	for (let i = 0; i < jsonPaths.length; i++) {
 		const path = jsonPaths[i];
@@ -99,10 +108,10 @@ export async function loadBibliographyData(
 			continue;
 		}
 
-		let entries: Record<string, unknown>[];
+		let entries: BibEntry[];
 
 		if (Array.isArray(data)) {
-			entries = data;
+			entries = data as BibEntry[];
 		} else if (isBetterBibTeXFormat(data)) {
 			const collectionNames = new Map<string, string[]>();
 			if (data.collections) {
@@ -114,7 +123,7 @@ export async function loadBibliographyData(
 					}
 				}
 			}
-			entries = data.items.map(item => normalizeBbtEntry(item, collectionNames));
+			entries = data.items.map(item => normalizeBbtEntry(item, collectionNames) as BibEntry);
 		} else {
 			continue;
 		}
@@ -130,8 +139,8 @@ export async function loadBibliographyData(
 				seenKeys.set(key, entry);
 				mergedData.push(entry);
 			} else {
-				existing['_source_files'].push(bibName);
-				existing['_duplicates'].push(entry);
+				(existing['_source_files'] as string[]).push(bibName);
+				(existing['_duplicates'] as BibEntry[]).push(entry);
 			}
 		}
 	}

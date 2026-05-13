@@ -1,5 +1,4 @@
 import { Notice, Plugin, TFile, normalizePath, Platform } from 'obsidian';
-import { spawn } from 'child_process';
 import { DEFAULT_SETTINGS, SimpleCitationsSettings } from './settings/settings';
 import { SimpleCitationsSettingTab } from './settings/SettingTab';
 import { autoAddCitations, autoSyncCitations } from './commands/autoCitations';
@@ -48,7 +47,7 @@ export default class SimpleCitations extends Plugin {
 				await this.app.vault.modify(activeFile, newContent);
 
 				// pandoc settings
-				const BasePath = (this.app.vault.adapter as any).getBasePath(); // get base path
+				const BasePath = (this.app.vault.adapter as unknown as { getBasePath(): string }).getBasePath();
 				const PandocPath = normalizePath(this.settings.inputPandocPath) || "pandoc"; // pandoc path
 				const CurrentFilePath = normalizePath(activeFile.path); // current file path
 				const CurrentFileFolder = CurrentFilePath.split("/").slice(0, -1).join("/"); // current file folder
@@ -86,6 +85,7 @@ export default class SimpleCitations extends Plugin {
 
 				// execute pandoc
 				try {
+					const { spawn } = require('child_process') as typeof import('child_process');
 					const pandocProcess = spawn(PandocPath,
 						[PandocInputFile, "-o", PandocOutputFile, ...PandocArgs],
 						{env: process.env});
@@ -96,17 +96,19 @@ export default class SimpleCitations extends Plugin {
 					});
 
 					// close handling
-					pandocProcess.on('close', async (code) => {
-						if (code === 0) {
-							new Notice('Pandoc execution completed successfully.');
-						} else {
-							new Notice(`Pandoc execution failed with code: ${code}`);
-						}
-						// Ensure the file content is always restored after pandoc process is closed
-						await this.app.vault.modify(activeFile, content);
+					pandocProcess.on('close', (code) => {
+						void (async () => {
+							if (code === 0) {
+								new Notice('Pandoc execution completed successfully.');
+							} else {
+								new Notice(`Pandoc execution failed with code: ${code}`);
+							}
+							// Ensure the file content is always restored after pandoc process is closed
+							await this.app.vault.modify(activeFile, content);
+						})();
 					});
 				} catch (error) {
-					new Notice(`An error occurred: ${error.message}`);
+					new Notice(`An error occurred: ${(error as Error).message}`);
 					// Ensure the file content is always restored after pandoc process is closed
 					await this.app.vault.modify(activeFile, content);
 				}
@@ -142,7 +144,7 @@ export default class SimpleCitations extends Plugin {
 				const files = folder.children.filter(file => file instanceof TFile);
 				const fileNames = files.map(file => file.name.replace(/\.md$/, ""));
 				// get citation keys
-				const citationKeys = new Set(mergedData.map((entry: { [x: string]: any; }) => entry["citation-key"]));
+				const citationKeys = new Set(mergedData.map(entry => entry["citation-key"]));
 				// get missing files
 				const missingFiles = fileNames.filter(fileName => !citationKeys.has(fileName.slice(1)));
 				if (missingFiles.length === 0) {
@@ -161,13 +163,14 @@ export default class SimpleCitations extends Plugin {
 
 		// watch json files for auto-add / auto-sync
 		this.registerEvent(this.app.vault.on('modify', file => {
-			autoAddCitations(this.app, this.settings, file as TFile);
-			autoSyncCitations(this.app, this.settings, file as TFile);
+			if (!(file instanceof TFile)) return;
+			autoAddCitations(this.app, this.settings, file);
+			autoSyncCitations(this.app, this.settings, file);
 		}));
 
 		// auto update citations on file open
 		this.registerEvent(this.app.workspace.on('file-open', file => {
-			this.updateCitations.autoUpdateCitations(file);
+			void this.updateCitations.autoUpdateCitations(file);
 		}));
 
 		// auto execute add citations command at start
@@ -176,7 +179,7 @@ export default class SimpleCitations extends Plugin {
 			if (this.settings.jsonPaths.length > 0 && this.settings.jsonPaths[0]) {
 				const firstFile = this.app.vault.getFileByPath(normalizePath(this.settings.jsonPaths[0]));
 				if (firstFile) {
-					autoAddCitations(this.app, this.settings, firstFile as TFile);
+					autoAddCitations(this.app, this.settings, firstFile);
 				}
 			}
 		});
@@ -197,7 +200,7 @@ export default class SimpleCitations extends Plugin {
 			if (!this.settings.jsonPaths || this.settings.jsonPaths.length === 0) {
 				this.settings.jsonPaths = [data.jsonPath];
 			}
-			delete (this.settings as any).jsonPath;
+			delete (this.settings as unknown as Record<string, unknown>).jsonPath;
 			needsSave = true;
 		}
 
@@ -210,7 +213,7 @@ export default class SimpleCitations extends Plugin {
 					}
 				}
 			}
-			delete (this.settings as any).jsonUpdatedTime;
+			delete (this.settings as unknown as Record<string, unknown>).jsonUpdatedTime;
 			needsSave = true;
 		}
 

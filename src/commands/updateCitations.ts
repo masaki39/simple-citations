@@ -46,13 +46,13 @@ export class UpdateCitations {
 
 		// progress notice
 		let notice = new Notice(`0 file(s) updated.`, 0);
-		const intervalId = setInterval(() => {
+		const intervalId = window.setInterval(() => {
 			notice.setMessage(`${fileCount} file(s) updated.`);
 		}, 200);
 
 		// check json file
 		for (let i = 0; i < mergedData.length; i++) {
-			const citekey = mergedData[i]?.['citation-key'];
+			const citekey = mergedData[i]?.['citation-key'] ?? '';
 			if (!validateCitekey(citekey)) continue;
 			const targetFileName = "@" + citekey + ".md";
 			const targetFile = files.get(targetFileName);
@@ -65,17 +65,17 @@ export class UpdateCitations {
 					this.app,
 					targetFile,
 					templateContent,
-					this.settings.includeAbstract ? mergedData[i]['abstract'] : ""
+					this.settings.includeAbstract ? mergedData[i]['abstract'] ?? '' : ""
 				);
 				const after = await this.app.vault.read(targetFile);
 				if (before !== after) fileCount++;
 			}
 		}
-		clearInterval(intervalId);
+		window.clearInterval(intervalId);
 		const endTime = performance.now();
 		const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
 		notice.setMessage(`${fileCount} file(s) updated.\nTime taken: ${elapsedTime} seconds`);
-		setTimeout(() => {
+		window.setTimeout(() => {
 			notice.hide();
 		}, 3000);
 	}
@@ -110,14 +110,14 @@ export class UpdateCitations {
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 
 		// Find the matching entry in merged data
-		const matchingEntry = mergedData.find((item: any) => item?.['citation-key'] === citekey);
+		const matchingEntry = mergedData.find(item => item?.['citation-key'] === citekey);
 
 		if (!matchingEntry) {
 			new Notice(`No citation data found for "${citekey}" in any bibliography file.`);
 			return;
 		}
 
-		if (!validateCitekey(matchingEntry['citation-key'])) {
+		if (!validateCitekey(matchingEntry['citation-key'] ?? '')) {
 			new Notice(`Invalid citation key: "${matchingEntry['citation-key']}"`);
 			return;
 		}
@@ -128,7 +128,7 @@ export class UpdateCitations {
 			this.app,
 			activeFile,
 			templateContent,
-			this.settings.includeAbstract ? matchingEntry['abstract'] : ""
+			this.settings.includeAbstract ? matchingEntry['abstract'] ?? '' : ""
 		);
 
 		new Notice('Active file updated.');
@@ -161,13 +161,13 @@ export class UpdateCitations {
 		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
 
 		// Find the matching entry in merged data
-		const matchingEntry = mergedData.find((item: any) => item?.['citation-key'] === citekey);
+		const matchingEntry = mergedData.find(item => item?.['citation-key'] === citekey);
 
 		if (!matchingEntry) {
 			return;
 		}
 
-		if (!validateCitekey(matchingEntry['citation-key'])) {
+		if (!validateCitekey(matchingEntry['citation-key'] ?? '')) {
 			return;
 		}
 
@@ -177,7 +177,7 @@ export class UpdateCitations {
 			this.app,
 			file,
 			templateContent,
-			this.settings.includeAbstract ? matchingEntry['abstract'] : ""
+			this.settings.includeAbstract ? matchingEntry['abstract'] ?? '' : ""
 		);
 
 		console.log(`Auto update citations completed for: ${file.name}`);

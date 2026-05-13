@@ -31,13 +31,13 @@ export function getDefaultStrategy(property: string): MergeStrategy {
  * - Both arrays → concat and deduplicate
  * - Mixed or both scalars → wrap in array and deduplicate
  */
-export function mergeValues(existing: any, incoming: any): any {
+export function mergeValues(existing: unknown, incoming: unknown): unknown {
 	if (existing === undefined) return incoming;
 	if (incoming === undefined) return existing;
 	const arrA = Array.isArray(existing) ? existing : [existing];
 	const arrB = Array.isArray(incoming) ? incoming : [incoming];
 	const seen = new Set<string>();
-	const result: any[] = [];
+	const result: unknown[] = [];
 	for (const item of [...arrA, ...arrB]) {
 		const key = typeof item === 'object' && item !== null
 			? JSON.stringify(item)
