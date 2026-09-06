@@ -1,6 +1,19 @@
-import { App, Notice, Platform, PluginSettingTab, Setting, normalizePath, setIcon } from "obsidian";
+import {
+	App,
+	Notice,
+	Platform,
+	PluginSettingTab,
+	Setting,
+	SettingDefinitionEmpty,
+	SettingDefinitionItem,
+	normalizePath,
+} from "obsidian";
 import SimpleCitations from "../main";
-import { updateSettingJsonStatus, updateSettingFolderStatus, updateSettingTemplateStatus } from "../utils/fileStatus";
+import {
+	updateSettingJsonStatus,
+	updateSettingFolderStatus,
+	updateSettingTemplateStatus,
+} from "../utils/fileStatus";
 import { JsonFileSuggest, FolderSuggest } from "./FileSuggest";
 import { getStrategy, getDefaultStrategy } from "../utils/mergeStrategies";
 import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
@@ -8,415 +21,375 @@ import { isBetterBibTeXFormat } from "../utils/loadBibliographyData";
 
 export class SimpleCitationsSettingTab extends PluginSettingTab {
 	plugin: SimpleCitations;
-	private mergeContainer: HTMLElement | null = null;
+	private hasBbtFiles = false;
+	private bbtSignature: string | null = null;
 
 	constructor(app: App, plugin: SimpleCitations) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
-	display(): void {
-		const {containerEl} = this;
+	getControlValue(key: string): unknown {
+		return (this.plugin.settings as unknown as Record<string, unknown>)[key];
+	}
 
-		containerEl.empty();
+	async setControlValue(key: string, value: unknown): Promise<void> {
+		(this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
+		await this.plugin.saveSettings();
+		// Toggling this shows/hides the base-property rows.
+		if (key === "showBaseProperties") {
+			this.refreshDomState();
+		}
+	}
 
-		new Setting(containerEl).setName('Basic').setHeading();
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		// Refresh BetterBibTeX detection in the background; re-renders if it changes.
+		void this.refreshBbtDetection();
 
-		// Bibliography file paths — single setting block
-		const bibSetting = new Setting(containerEl)
-			.setName('Bibliography file paths')
-			.setDesc('Better CSL JSON or BetterBibTeX JSON files. Earlier entries have higher priority when duplicate citation keys exist.')
-			.addButton(button => button
-				.setButtonText('+ Add file')
-				.setCta()
-				.onClick(async () => {
-					this.plugin.settings.jsonPaths.push('');
-					this.plugin.settings.jsonNames.push('');
-					await this.plugin.saveSettings();
-					this.display();
-				}));
+		const settings = this.plugin.settings;
+		const paths = settings.jsonPaths;
+		const names = settings.jsonNames;
 
-		bibSetting.settingEl.addClass('simple-citations-bib-setting');
-		const bibListEl = bibSetting.settingEl.createDiv({ cls: 'simple-citations-bib-list' });
+		const optionalFields = settings.optionalFields
+			.split("\n")
+			.map((f) => f.trim())
+			.filter(Boolean);
+		const baseSet = new Set<string>(BASE_PROPERTIES);
+		const customMergeProperties = optionalFields.filter((f) => !baseSet.has(f));
+
+		return [
+			{
+				type: "list",
+				heading: "Bibliography files",
+				emptyState:
+					"No bibliography files added yet. Add a Better CSL JSON or BetterBibTeX JSON file exported from Zotero.",
+				addItem: {
+					name: "Add bibliography file",
+					action: () => {
+						paths.push("");
+						names.push("");
+						void this.plugin.saveSettings().then(() => this.update());
+					},
+				},
+				onReorder: (oldIndex, newIndex) => {
+					moveItem(paths, oldIndex, newIndex);
+					moveItem(names, oldIndex, newIndex);
+					void this.plugin.saveSettings().then(() => this.update());
+				},
+				onDelete: (index) => {
+					paths.splice(index, 1);
+					names.splice(index, 1);
+					void this.plugin.saveSettings().then(() => this.update());
+				},
+				items: paths.map((_, index) => ({
+					name: this.displayName(index) || "(unnamed)",
+					desc:
+						"Earlier entries have higher priority when the same citation key exists in multiple files.",
+					render: (setting: Setting) => this.renderBibRow(setting, index),
+				})),
+			},
+			{
+				type: "group",
+				heading: "General",
+				items: [
+					{
+						name: "Literature note folder",
+						desc: "Folder to save literature notes. Default: vault root.",
+						render: (setting: Setting) => this.renderFolderPath(setting),
+					},
+					{
+						name: "Auto add citations",
+						desc: "When enabled, run add commands automatically when any bibliography file is updated.",
+						control: { type: "toggle", key: "autoAddCitations" },
+					},
+					{
+						name: "Auto sync citations",
+						desc: "When enabled, automatically add and update all literature notes when any bibliography file is updated.",
+						control: { type: "toggle", key: "autoSyncCitations" },
+					},
+					{
+						name: "Auto update citations",
+						desc: "When enabled, automatically update a literature note when it is opened.",
+						control: { type: "toggle", key: "autoUpdateCitations" },
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Additional properties",
+				items: [
+					{
+						name: "Include author tag",
+						desc: "When enabled, add a tag with the first author's name.",
+						control: { type: "toggle", key: "includeAuthorTag" },
+					},
+					{
+						name: "Include journal tag",
+						desc: "When enabled, add a tag with the journal name.",
+						control: { type: "toggle", key: "includeJournalTag" },
+					},
+					{
+						name: "Include bibliography",
+						desc: 'When enabled, add a "bibliography" property listing which bibliography file(s) the citation was found in (e.g. ["My Library"]).',
+						control: { type: "toggle", key: "includeBibliography" },
+					},
+					{
+						name: "Include PDF paths (BetterBibTeX JSON)",
+						desc: 'Automatically add a "pdf" property with local PDF paths extracted from attachments.',
+						visible: () => this.hasBbtFiles,
+						control: { type: "toggle", key: "includeBbtPdf" },
+					},
+					{
+						name: "Include collections (BetterBibTeX JSON)",
+						desc: 'Automatically add a "collections" property with the Zotero collection names the item belongs to.',
+						visible: () => this.hasBbtFiles,
+						control: { type: "toggle", key: "includeBbtCollections" },
+					},
+					{
+						name: "Optional fields",
+						desc: "Extra fields to copy from the bibliography JSON. One per line, top level only.",
+						render: (setting: Setting) => this.renderOptionalFields(setting),
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Merge strategies",
+				cls: "simple-citations-merge-list",
+				visible: () => this.plugin.settings.jsonPaths.filter((p) => p).length > 1,
+				items: [
+					{
+						name: "When the same citation key appears in multiple bibliography files, choose how each property is combined.",
+					} as SettingDefinitionEmpty,
+					...customMergeProperties.map((prop) => ({
+						name: prop,
+						render: (setting: Setting) => this.renderMergeStrategy(setting, prop),
+					})),
+					{
+						name: "Show base properties",
+						desc: "Built-in properties managed by the plugin. Defaults: collections → Merge, others → Priority.",
+						control: { type: "toggle", key: "showBaseProperties" },
+					},
+					...BASE_PROPERTIES.map((prop) => ({
+						name: prop,
+						visible: () => this.plugin.settings.showBaseProperties,
+						render: (setting: Setting) => this.renderMergeStrategy(setting, prop),
+					})),
+				],
+			},
+			{
+				type: "group",
+				heading: "Additional content",
+				items: [
+					{
+						name: "Include abstract",
+						desc: "When enabled, add the abstract to the top of each literature note.",
+						control: { type: "toggle", key: "includeAbstract" },
+					},
+					{
+						name: "Template file",
+						desc: "When set, add this template to the top of each literature note. Intended for dynamic templates such as Dataview.",
+						render: (setting: Setting) => this.renderTemplatePath(setting),
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Pandoc",
+				items: [
+					{
+						name: "Pandoc is only available on desktop.",
+						visible: () => Platform.isMobile,
+					} as SettingDefinitionEmpty,
+					{
+						name: "Pandoc path",
+						desc: createFragment((f) => {
+							f.createEl("a", { text: "Pandoc", href: "https://pandoc.org" });
+							f.appendText(
+								" must be installed. Mac/Linux: `which pandoc`, Windows: `where pandoc`."
+							);
+						}),
+						control: { type: "text", key: "inputPandocPath", placeholder: "pandoc" },
+					},
+					{
+						name: "Export folder",
+						desc: "Absolute path to an export folder. Leave empty to export next to the source note.",
+						control: {
+							type: "text",
+							key: "pandocOutputPath",
+							placeholder: "Same as source note",
+						},
+					},
+					{
+						name: "Extra Pandoc arguments",
+						desc: "Extra command line arguments for Pandoc. Absolute paths only. New lines are turned into spaces. Citeproc and bibliography are added automatically.",
+						control: {
+							type: "textarea",
+							key: "pandocArgs",
+							rows: 6,
+							placeholder: "Example: -f markdown+hard_line_breaks",
+						},
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Poppler",
+				items: [
+					{
+						name: "Poppler is only available on desktop.",
+						visible: () => Platform.isMobile,
+					} as SettingDefinitionEmpty,
+					{
+						name: "pdfimages path",
+						desc: createFragment((f) => {
+							f.createEl("a", {
+								text: "Poppler",
+								href: "https://poppler.freedesktop.org",
+							});
+							f.appendText(
+								" must be installed. Mac/Linux: `which pdfimages`, Windows: `where pdfimages`."
+							);
+						}),
+						control: { type: "text", key: "pdfimagesPath", placeholder: "pdfimages" },
+					},
+				],
+			},
+		];
+	}
+
+	private displayName(index: number): string {
+		const path = this.plugin.settings.jsonPaths[index] ?? "";
+		const defaultName = path.split("/").pop()?.replace(/\.json$/, "") || "";
+		return this.plugin.settings.jsonNames[index]?.trim() || defaultName;
+	}
+
+	private renderBibRow(setting: Setting, index: number): void {
 		const paths = this.plugin.settings.jsonPaths;
+		const names = this.plugin.settings.jsonNames;
 
-		if (paths.length === 0) {
-			bibListEl.createEl('p', {
-				text: 'No bibliography files added yet.',
-				cls: 'simple-citations-bib-empty',
-			});
-		}
+		const statusEl = createSpan();
+		updateSettingJsonStatus(this.app, statusEl, paths[index] ?? "");
+		setting.nameEl.prepend(statusEl);
 
-		for (let i = 0; i < paths.length; i++) {
-			const idx = i;
-			const rowEl = bibListEl.createDiv({ cls: 'simple-citations-bib-row' });
+		const defaultName = (paths[index] ?? "").split("/").pop()?.replace(/\.json$/, "") || "";
 
-			// Left: info
-			const infoEl = rowEl.createDiv({ cls: 'simple-citations-bib-info' });
+		setting.addText((text) =>
+			text
+				.setPlaceholder(
+					defaultName ? `Display name (default: ${defaultName})` : "Display name"
+				)
+				.setValue(names[index] ?? "")
+				.onChange(async (value) => {
+					names[index] = value;
+					await this.plugin.saveSettings();
+				})
+		);
 
-			const defaultName = paths[idx]?.split('/').pop()?.replace(/\.json$/, '') || '';
-			const displayName = this.plugin.settings.jsonNames[idx]?.trim() || defaultName;
-
-			const showDisplay = () => {
-				infoEl.empty();
-				// Main name (large)
-				const nameRow = infoEl.createDiv({ cls: 'simple-citations-bib-name' });
-				const statusSpan = nameRow.createSpan();
-				updateSettingJsonStatus(this.app, statusSpan, paths[idx]);
-				nameRow.createSpan({ text: displayName || '(unnamed)' });
-				// Path as subtitle
-				const pathDiv = infoEl.createDiv({ cls: 'simple-citations-bib-path' });
-				pathDiv.createSpan({ text: 'File path: ', cls: 'simple-citations-bib-path-label' });
-				pathDiv.createSpan({ text: paths[idx] || '(empty path)' });
-			};
-
-			const showEditor = () => {
-				infoEl.empty();
-				// Name input
-				const nameInput = infoEl.createEl('input', { type: 'text', cls: 'simple-citations-bib-input' });
-				nameInput.value = this.plugin.settings.jsonNames[idx] || '';
-				nameInput.placeholder = defaultName
-					? `Display name (default: ${defaultName})`
-					: 'Display name (defaults to JSON filename)';
-
-				// Path input with file suggest
-				const pathInput = infoEl.createEl('input', { type: 'text', cls: 'simple-citations-bib-input simple-citations-bib-input-path' });
-				pathInput.value = paths[idx];
-				pathInput.placeholder = 'Search for a .json file';
-				new JsonFileSuggest(this.app, pathInput, () =>
-					this.plugin.settings.jsonPaths.filter((_, i) => i !== idx)
-				);
-
-				// Focus the first non-empty field, or path if new
-				if (!paths[idx]) {
-					pathInput.focus();
-				} else {
-					nameInput.focus();
-				}
-
-				const save = async () => {
-					// Delay to let the other input's blur not race
-					await new Promise(r => window.setTimeout(r, 100));
-					if (!pathInput.value && !activeDocument.activeElement?.closest('.simple-citations-bib-row')) {
-						// Remove if path is empty and focus left the row
-						this.plugin.settings.jsonPaths.splice(idx, 1);
-						this.plugin.settings.jsonNames.splice(idx, 1);
-						await this.plugin.saveSettings();
-						this.display();
+		setting.addText((text) => {
+			text
+				.setPlaceholder("path/to/references.json")
+				.setValue(paths[index] ?? "")
+				.onChange(async (value) => {
+					const duplicate = paths.some((p, i) => i !== index && p && p === value);
+					if (duplicate) {
+						new Notice("This bibliography file has already been added.");
+						text.setValue(paths[index] ?? "");
 						return;
 					}
-					// Reject duplicate paths
-					const newPath = pathInput.value;
-					const duplicate = this.plugin.settings.jsonPaths.some(
-						(p, i) => i !== idx && p === newPath
-					);
-					if (duplicate && newPath) {
-						new Notice('This bibliography file has already been added.');
-						pathInput.value = paths[idx];
-						return;
-					}
-					this.plugin.settings.jsonPaths[idx] = newPath;
-					this.plugin.settings.jsonNames[idx] = nameInput.value;
+					paths[index] = value;
 					await this.plugin.saveSettings();
-					// Only re-render if focus left this row entirely
-					if (!activeDocument.activeElement?.closest('.simple-citations-bib-row')) {
-						this.display();
-					}
-				};
-
-				nameInput.addEventListener('blur', () => { void save(); });
-				pathInput.addEventListener('blur', () => { void save(); });
-				nameInput.addEventListener('keydown', (e) => {
-					if (e.key === 'Enter') { pathInput.focus(); }
+					updateSettingJsonStatus(this.app, statusEl, value);
 				});
-				pathInput.addEventListener('keydown', (e) => {
-					if (e.key === 'Enter') { pathInput.blur(); }
+			new JsonFileSuggest(this.app, text.inputEl, () =>
+				paths.filter((_, i) => i !== index)
+			);
+		});
+	}
+
+	private renderFolderPath(setting: Setting): void {
+		setting.addText((text) => {
+			const statusEl = createSpan();
+			updateSettingFolderStatus(this.app, statusEl, this.plugin.settings.folderPath);
+			setting.controlEl.insertBefore(statusEl, text.inputEl);
+			new FolderSuggest(this.app, text.inputEl);
+			text
+				.setPlaceholder("Enter a folder path")
+				.setValue(this.plugin.settings.folderPath)
+				.onChange(async (value) => {
+					this.plugin.settings.folderPath = value;
+					await this.plugin.saveSettings();
+					updateSettingFolderStatus(this.app, statusEl, value);
 				});
-			};
+		});
+	}
 
-			// Auto-open editor for empty paths, otherwise show display
-			if (!paths[i]) {
-				showEditor();
-			} else {
-				showDisplay();
-			}
-
-			// Right: buttons
-			const btnGroup = rowEl.createDiv({ cls: 'simple-citations-bib-buttons' });
-
-			// Move up
-			if (i > 0) {
-				const upBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Move up' } });
-				setIcon(upBtn, 'arrow-up');
-				upBtn.addEventListener('click', () => {
-					void (async () => {
-						const names = this.plugin.settings.jsonNames;
-						[paths[idx - 1], paths[idx]] = [paths[idx], paths[idx - 1]];
-						[names[idx - 1], names[idx]] = [names[idx], names[idx - 1]];
-						await this.plugin.saveSettings();
-						this.display();
-					})();
+	private renderTemplatePath(setting: Setting): void {
+		setting.addText((text) => {
+			const statusEl = createSpan();
+			updateSettingTemplateStatus(this.app, statusEl, this.plugin.settings.templatePath);
+			setting.controlEl.insertBefore(statusEl, text.inputEl);
+			text
+				.setPlaceholder("Enter a note path")
+				.setValue(this.plugin.settings.templatePath)
+				.onChange(async (value) => {
+					this.plugin.settings.templatePath = value;
+					await this.plugin.saveSettings();
+					updateSettingTemplateStatus(this.app, statusEl, value);
 				});
-			}
+		});
+	}
 
-			// Move down
-			if (i < paths.length - 1) {
-				const downBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Move down' } });
-				setIcon(downBtn, 'arrow-down');
-				downBtn.addEventListener('click', () => {
-					void (async () => {
-						const names = this.plugin.settings.jsonNames;
-						[paths[idx], paths[idx + 1]] = [paths[idx + 1], paths[idx]];
-						[names[idx], names[idx + 1]] = [names[idx + 1], names[idx]];
-						await this.plugin.saveSettings();
-						this.display();
-					})();
-				});
-			}
-
-			// Edit
-			const editBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Edit path' } });
-			setIcon(editBtn, 'pencil');
-			editBtn.addEventListener('click', () => showEditor());
-
-			// Delete
-			const delBtn = btnGroup.createEl('button', { cls: 'clickable-icon', attr: { 'aria-label': 'Remove' } });
-			setIcon(delBtn, 'x');
-			delBtn.addEventListener('click', () => {
-				void (async () => {
-					this.plugin.settings.jsonPaths.splice(idx, 1);
-					this.plugin.settings.jsonNames.splice(idx, 1);
-					await this.plugin.saveSettings();
-					this.display();
-				})();
-			});
-		}
-
-		new Setting(containerEl)
-			.setName('Set literature note folder path')
-			.setDesc('Folder to save literature notes. Default: root folder.')
-			.addText(text => {
-				const container = text.inputEl.parentElement;
-				let statusSpan: HTMLElement | null = null;
-				if (container) {
-					statusSpan = container.insertBefore(createSpan(), text.inputEl);
-
-					updateSettingFolderStatus(this.app, statusSpan, this.plugin.settings.folderPath);
-				}
-				new FolderSuggest(this.app, text.inputEl);
-				return text
-					.setPlaceholder('Enter Relative Path')
-					.setValue(this.plugin.settings.folderPath)
-					.onChange(async (value) => {
-						this.plugin.settings.folderPath = value;
-						await this.plugin.saveSettings();
-						if (container && statusSpan) {
-							updateSettingFolderStatus(this.app, statusSpan, value);
-						}
-					});
-			});
-		new Setting(containerEl)
-			.setName('Auto add citations')
-			.setDesc('When enabled, execute add commands automatically when any bibliography file is updated.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.autoAddCitations)
-				.onChange(async (value) => {
-					this.plugin.settings.autoAddCitations = value;
-					await this.plugin.saveSettings();
-				}));
-		new Setting(containerEl)
-			.setName('Auto sync citations')
-			.setDesc('When enabled, automatically adds and updates all literature notes when any bibliography file is updated.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.autoSyncCitations)
-				.onChange(async (value) => {
-					this.plugin.settings.autoSyncCitations = value;
-					await this.plugin.saveSettings();
-				}));
-		new Setting(containerEl)
-			.setName('Auto update citations')
-			.setDesc('When enabled, automatically updates citation notes when opened.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.autoUpdateCitations)
-				.onChange(async (value) => {
-					this.plugin.settings.autoUpdateCitations = value;
-					await this.plugin.saveSettings();
-				}));
-		new Setting(containerEl).setName('Additional Properties').setHeading();
-		new Setting(containerEl)
-			.setName('Include author tag')
-			.setDesc('When enabled, adds a tag with the first author\'s name.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.includeAuthorTag)
-				.onChange(async (value) => {
-					this.plugin.settings.includeAuthorTag = value;
-					await this.plugin.saveSettings();
-				}));
-		new Setting(containerEl)
-			.setName('Include journal tag')
-			.setDesc('When enabled, adds a tag with the journal name.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.includeJournalTag)
-				.onChange(async (value) => {
-					this.plugin.settings.includeJournalTag = value;
-					await this.plugin.saveSettings();
-				}));
-		new Setting(containerEl)
-			.setName('Include bibliography')
-			.setDesc('When enabled, adds a "bibliography" property to each literature note as a list, indicating which bibliography file(s) the citation was found in (e.g. ["My Library"]). If the entry appears in multiple files, all sources are listed.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.includeBibliography)
-				.onChange(async (value) => {
-					this.plugin.settings.includeBibliography = value;
-					await this.plugin.saveSettings();
-				}));
-		const bbtPropsContainer = containerEl.createDiv();
-		void (async () => {
-			const hasBbt = await this.detectBbtFiles();
-			if (!hasBbt) return;
-
-			new Setting(bbtPropsContainer)
-				.setName('Include PDF paths (BetterBibTeX JSON)')
-				.setDesc('Automatically adds a "pdf" property with local PDF paths extracted from attachments.')
-				.addToggle(toggle => toggle
-					.setValue(this.plugin.settings.includeBbtPdf)
-					.onChange(async (value) => {
-						this.plugin.settings.includeBbtPdf = value;
-						await this.plugin.saveSettings();
-					}));
-
-			new Setting(bbtPropsContainer)
-				.setName('Include collections (BetterBibTeX JSON)')
-				.setDesc('Automatically adds a "collections" property with Zotero collection names the item belongs to.')
-				.addToggle(toggle => toggle
-					.setValue(this.plugin.settings.includeBbtCollections)
-					.onChange(async (value) => {
-						this.plugin.settings.includeBbtCollections = value;
-						await this.plugin.saveSettings();
-					}));
-		})();
-
-		const optionalFieldsSetting = new Setting(containerEl)
-			.setName('Optional fields')
-			.setDesc('Set optional fields from JSON. (Separate by line breaks, 1st level only)')
-			.addTextArea(textArea => textArea
-				.setPlaceholder('key\npdf')
+	private renderOptionalFields(setting: Setting): void {
+		setting.addTextArea((textArea) =>
+			textArea
+				.setPlaceholder("key\npdf")
 				.setValue(this.plugin.settings.optionalFields)
 				.onChange(async (value) => {
 					this.plugin.settings.optionalFields = value;
 					await this.plugin.saveSettings();
-					if (this.mergeContainer) {
-						this.renderMergeStrategies(this.mergeContainer);
-					}
-				}));
-		optionalFieldsSetting.settingEl.addClass('simple-citations-mobile-wrap');
-		if (paths.filter(p => p).length > 1) {
-			new Setting(containerEl)
-				.setName('Merge strategies')
-				.setDesc('When the same citation key appears in multiple bibliography files, choose how each property is handled.')
-				.setHeading();
-			this.mergeContainer = containerEl.createDiv({ cls: 'simple-citations-merge-list' });
-			this.renderMergeStrategies(this.mergeContainer);
-		} else {
-			this.mergeContainer = null;
-		}
-		new Setting(containerEl).setName('Additional Content').setHeading();
-		new Setting(containerEl)
-			.setName('Include abstract to content')
-			.setDesc('When enabled, adds the abstract to the top of each literature note.')
-			.addToggle(toggle => toggle
-				.setValue(this.plugin.settings.includeAbstract)
-				.onChange(async (value) => {
-					this.plugin.settings.includeAbstract = value;
-					await this.plugin.saveSettings();
-				}));
-		new Setting(containerEl)
-			.setName('Set template file path')
-			.setDesc('When setting this, adds the template to the top of each literature note. (Intended for use with dynamic templates such as Dataview.)')
-			.addText(text => {
-				const container = text.inputEl.parentElement;
-				let statusSpan: HTMLElement | null = null;
-				if (container) {
-					statusSpan = container.insertBefore(createSpan(), text.inputEl);
-
-					updateSettingTemplateStatus(this.app, statusSpan, this.plugin.settings.templatePath);
-				}
-				return text
-					.setPlaceholder('Enter Relative Path')
-					.setValue(this.plugin.settings.templatePath)
-					.onChange(async (value) => {
-						this.plugin.settings.templatePath = value;
-						await this.plugin.saveSettings();
-						if (container && statusSpan) {
-							updateSettingTemplateStatus(this.app, statusSpan, value);
-						}
-					});
-			});
-		const pandocHeading = new Setting(containerEl).setName('Pandoc').setHeading();
-		if (Platform.isMobile) {
-			const descEl = pandocHeading.descEl;
-			descEl.createSpan({ text: 'Note: ', cls: 'simple-citations-note-label' });
-			descEl.appendText('Pandoc is only available on desktop.');
-		}
-		new Setting(containerEl)
-			.setName('Pandoc path')
-			.setDesc(createFragment(f => {
-				f.createEl('a', { text: 'Pandoc', href: 'https://pandoc.org' });
-				f.appendText(' must be installed. Mac/Linux: `which pandoc`, Windows: `where pandoc`.');
-			}))
-			.addText(text => text
-				.setPlaceholder('pandoc')
-				.setValue(this.plugin.settings.inputPandocPath)
-				.onChange(async (value) => {
-					this.plugin.settings.inputPandocPath = value;
-					await this.plugin.saveSettings();
-				}));
-		new Setting(containerEl)
-			.setName('Export folder')
-			.setDesc('Absolute path to an export folder.')
-			.addText(text => text
-				.setPlaceholder('Same as target')
-				.setValue(this.plugin.settings.pandocOutputPath)
-				.onChange(async (value) => {
-					this.plugin.settings.pandocOutputPath = value;
-					await this.plugin.saveSettings();
-				}));
-		const pandocArgsSetting = new Setting(containerEl)
-			.setName('Extra Pandoc arguments')
-			.setDesc('Add extra command line arguments for pandoc. Absolute path only. New lines are turned into spaces. Citeproc and bibliography are automatically added.')
-			.addTextArea(textArea => {
-				textArea
-					.setPlaceholder('Example: -f markdown+hard_line_breaks')
-					.setValue(this.plugin.settings.pandocArgs)
-					.onChange(async (value) => {
-						this.plugin.settings.pandocArgs = value;
-						await this.plugin.saveSettings();
-					});
-				textArea.inputEl.addClass('simple-citations-pandoc-args-textarea');
-			});
-		pandocArgsSetting.settingEl.addClass('simple-citations-mobile-wrap');
-
-		const popplerHeading = new Setting(containerEl).setName('Poppler').setHeading();
-		if (Platform.isMobile) {
-			popplerHeading.descEl.createSpan({ text: 'Note: ', cls: 'simple-citations-note-label' });
-			popplerHeading.descEl.appendText('Poppler is only available on desktop.');
-		}
-		new Setting(containerEl)
-			.setName('pdfimages path')
-			.setDesc(createFragment(f => {
-				f.createEl('a', { text: 'Poppler', href: 'https://poppler.freedesktop.org' });
-				f.appendText(' must be installed. Mac/Linux: `which pdfimages`, Windows: `where pdfimages`.');
-			}))
-			.addText(text => text
-				.setPlaceholder('pdfimages')
-				.setValue(this.plugin.settings.pdfimagesPath)
-				.onChange(async (value) => {
-					this.plugin.settings.pdfimagesPath = value;
-					await this.plugin.saveSettings();
-				}));
+					// Custom merge-strategy rows derive from this value; they are
+					// rebuilt the next time the settings tab is rendered.
+				})
+		);
 	}
 
+	private renderMergeStrategy(setting: Setting, prop: string): void {
+		const defaultStrategy = getDefaultStrategy(prop);
+		const strategies = this.plugin.settings.mergeStrategies;
+		const describe = () =>
+			setting.setDesc(strategies[prop] !== undefined ? `Default: ${defaultStrategy}` : "");
+		describe();
+		setting.addDropdown((dropdown) =>
+			dropdown
+				.addOption("priority", "Priority")
+				.addOption("merge", "Merge")
+				.setValue(getStrategy(strategies, prop))
+				.onChange(async (value) => {
+					if (value === defaultStrategy) {
+						delete strategies[prop];
+					} else {
+						strategies[prop] = value;
+					}
+					await this.plugin.saveSettings();
+					describe();
+				})
+		);
+	}
 
+	private async refreshBbtDetection(): Promise<void> {
+		// Only re-scan when the configured file list changed, so routine
+		// re-renders don't parse bibliography JSON on every keystroke.
+		const signature = this.plugin.settings.jsonPaths.join(" ");
+		if (signature === this.bbtSignature) return;
+		this.bbtSignature = signature;
+
+		const detected = await this.detectBbtFiles();
+		if (detected !== this.hasBbtFiles) {
+			this.hasBbtFiles = detected;
+			this.update();
+		}
+	}
 
 	private async detectBbtFiles(): Promise<boolean> {
 		for (const path of this.plugin.settings.jsonPaths) {
@@ -427,71 +400,16 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				const contents = await this.app.vault.cachedRead(file);
 				const data = JSON.parse(contents);
 				if (isBetterBibTeXFormat(data)) return true;
-			} catch { /* ignore parse errors */ }
+			} catch {
+				/* ignore parse errors */
+			}
 		}
 		return false;
 	}
+}
 
-	private renderMergeStrategies(container: HTMLElement) {
-		container.empty();
-
-		const optionalFields = this.plugin.settings.optionalFields
-			.split('\n')
-			.map(f => f.trim())
-			.filter(Boolean);
-		const baseSet = new Set(BASE_PROPERTIES);
-
-		// Deduplicate: optional fields that overlap with base are shown in base section
-		const customProperties = optionalFields.filter(f => !baseSet.has(f));
-
-		const renderProperty = (parent: HTMLElement, prop: string) => {
-			const defaultStrat = getDefaultStrategy(prop);
-			const current = getStrategy(this.plugin.settings.mergeStrategies, prop);
-			const isCustom = this.plugin.settings.mergeStrategies[prop] !== undefined;
-
-			new Setting(parent)
-				.setName(prop)
-				.setDesc(isCustom ? `Default: ${defaultStrat}` : '')
-				.addDropdown(dropdown => dropdown
-					.addOption('priority', 'Priority')
-					.addOption('merge', 'Merge')
-					.setValue(current)
-					.onChange(async (value) => {
-						if (value === defaultStrat) {
-							delete this.plugin.settings.mergeStrategies[prop];
-						} else {
-							this.plugin.settings.mergeStrategies[prop] = value;
-						}
-						await this.plugin.saveSettings();
-						this.renderMergeStrategies(container);
-					}));
-		};
-
-		// Custom properties (always visible)
-		for (const prop of customProperties) {
-			renderProperty(container, prop);
-		}
-
-		// Base properties (collapsible, wrapped in a single visual block)
-		const baseWrapper = container.createDiv({
-			cls: `simple-citations-base-props-wrapper${this.plugin.settings.showBaseProperties ? ' is-expanded' : ''}`
-		});
-		new Setting(baseWrapper)
-			.setName('Base properties')
-			.setDesc('Built-in properties managed by the plugin. Defaults: collections → Merge, others → Priority.')
-			.addToggle(t => t
-				.setValue(this.plugin.settings.showBaseProperties)
-				.onChange(async (value) => {
-					this.plugin.settings.showBaseProperties = value;
-					await this.plugin.saveSettings();
-					this.renderMergeStrategies(container);
-				}));
-
-		if (this.plugin.settings.showBaseProperties) {
-			const baseList = baseWrapper.createDiv({ cls: 'simple-citations-base-props-list' });
-			for (const prop of BASE_PROPERTIES) {
-				renderProperty(baseList, prop);
-			}
-		}
-	}
+function moveItem<T>(arr: T[], from: number, to: number): void {
+	if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return;
+	const [item] = arr.splice(from, 1);
+	arr.splice(to, 0, item);
 }
