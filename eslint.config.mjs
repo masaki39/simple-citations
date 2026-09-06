@@ -10,6 +10,7 @@ export default defineConfig([
 		"esbuild.config.mjs",
 		"version-bump.mjs",
 		"jest.config.cjs",
+		"jest.setup.cjs",
 		"versions.json",
 		"src/__mocks__/",
 	]),

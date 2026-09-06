@@ -5,6 +5,7 @@ module.exports = {
 	roots: ['<rootDir>/src'],
 	testMatch: ['**/__tests__/**/*.test.ts', '**/?(*.)+(spec|test).ts'],
 	moduleFileExtensions: ['ts', 'js', 'json'],
+	setupFiles: ['<rootDir>/jest.setup.cjs'],
 	moduleNameMapper: {
 		'^obsidian$': '<rootDir>/src/__mocks__/obsidian.js'
 	},

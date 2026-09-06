@@ -43,6 +43,15 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 	constructor(app: App, plugin: SimpleCitations) {
 		super(app, plugin);
 		this.plugin = plugin;
+
+		// getSettingDefinitions() — and with it the BetterBibTeX detection and
+		// the optional-field candidate scan — only runs when the tab is
+		// registered (during onload, before the vault file tree is ready) and
+		// on each explicit update(). Opening or reopening the settings does not
+		// re-run it. So the first scan is usually inconclusive and the
+		// BetterBibTeX-only rows stay hidden until something else calls
+		// update(). Re-run it once the workspace is ready.
+		this.app.workspace.onLayoutReady(() => this.update());
 	}
 
 	getControlValue(key: string): unknown {
