@@ -10,7 +10,8 @@
 		"lint:fix": "eslint . --fix",
 		"test": "jest",
 		"sync-version": "node version-bump.mjs && git add manifest.json versions.json",
-		"version": "pnpm run sync-version"
+		"version": "pnpm run sync-version",
+		"postversion": "node postversion.mjs"
 	},
 	"keywords": [],
 	"author": "",
