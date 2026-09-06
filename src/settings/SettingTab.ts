@@ -1,5 +1,6 @@
 import {
 	App,
+	ExtraButtonComponent,
 	Notice,
 	Platform,
 	PluginSettingTab,
@@ -30,8 +31,18 @@ import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
 import { isBetterBibTeXFormat, loadBibliographyData } from "../utils/loadBibliographyData";
 import { templateSampleOptions } from "../utils/templateSamples";
 
-const OPTIONAL_FIELDS_HELP_URL =
-	"https://github.com/masaki39/simple-citations#-optional-fields";
+const README_URL = "https://github.com/masaki39/simple-citations";
+const SETUP_HELP_URL = `${README_URL}#-initial-settings`;
+const OPTIONAL_FIELDS_HELP_URL = `${README_URL}#-optional-fields`;
+
+/** Adds a help button to a list heading that opens a README section. */
+function helpButton(url: string, tooltip: string) {
+	return (button: ExtraButtonComponent) =>
+		button
+			.setIcon("help")
+			.setTooltip(tooltip)
+			.onClick(() => window.open(url, "_blank"));
+}
 
 export class SimpleCitationsSettingTab extends PluginSettingTab {
 	plugin: SimpleCitations;
@@ -103,6 +114,9 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 			{
 				type: "list",
 				heading: "Bibliography files",
+				extraButtons: [
+					helpButton(SETUP_HELP_URL, "Setup guide: exporting from Zotero"),
+				],
 				emptyState:
 					"No bibliography files added yet. Add a Better CSL JSON or BetterBibTeX JSON file exported from Zotero.",
 				addItem: {
@@ -201,13 +215,10 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 						// explanation lives in the empty state and behind the
 						// help icon (Obsidian's own list settings do the same).
 						extraButtons: [
-							(button) =>
-								button
-									.setIcon("help")
-									.setTooltip("How to add fields in Zotero")
-									.onClick(() =>
-										window.open(OPTIONAL_FIELDS_HELP_URL, "_blank")
-									),
+							helpButton(
+								OPTIONAL_FIELDS_HELP_URL,
+								"How to add fields in Zotero"
+							),
 						],
 						emptyState: this.optionalFieldsDesc(
 							"No optional fields yet. Add a top-level field from the bibliography JSON " +
