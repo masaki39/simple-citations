@@ -5,6 +5,7 @@ import { updateFrontMatter } from '../utils/updateFrontMatter';
 import { checkRequiredFiles } from '../utils/checkRequiredFiles';
 import { validateCitekey } from '../utils/validateCitekey';
 import { loadBibliographyData } from '../utils/loadBibliographyData';
+import { resolveTemplateContent } from '../utils/templateSamples';
 
 export class AddCitations {
 	private app: App;
@@ -38,7 +39,7 @@ export class AddCitations {
 		// load and merge bibliography data
 		const { mergedData } = await loadBibliographyData(this.app, this.settings.jsonPaths, this.settings.jsonNames);
 		const files = new Map(folder.children.map(file => [file.name, file]));
-		let templateContent = templateFile ? await this.app.vault.cachedRead(templateFile) : "";
+		const templateContent = await resolveTemplateContent(this.app, this.settings, templateFile);
 		let fileCount: number = 0;
 
 		let notice: Notice | null = null;

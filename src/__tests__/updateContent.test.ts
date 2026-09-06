@@ -37,6 +37,26 @@ describe("updateContent", () => {
 		expect(processed).not.toContain("START_ABSTRACT");
 	});
 
+	it("keeps a single blank line between the abstract and template blocks", async () => {
+		const content = ["---", "title: Test", "---", ""].join("\n");
+		let processed = "";
+		const app = {
+			vault: {
+				process: jest.fn(async (_file, processor) => {
+					processed = processor(content);
+					return processed;
+				}),
+			},
+		} as any;
+
+		await updateContent(app, {} as any, "Template body", "Abstract body");
+
+		expect(processed).toContain(
+			"<!-- END_ABSTRACT -->\n\n<!-- START_TEMPLATE -->"
+		);
+		expect(processed).not.toMatch(/<!-- END_ABSTRACT -->\n{3,}<!-- START_TEMPLATE -->/);
+	});
+
 	it("normalizes abstract whitespace", async () => {
 		const content = [
 			"<!-- START_ABSTRACT -->",

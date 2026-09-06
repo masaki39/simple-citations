@@ -28,6 +28,7 @@ import { JsonFileSuggest, FolderSuggest, BibFieldSuggest } from "./FileSuggest";
 import { getStrategy, getDefaultStrategy } from "../utils/mergeStrategies";
 import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
 import { isBetterBibTeXFormat, loadBibliographyData } from "../utils/loadBibliographyData";
+import { templateSampleOptions } from "../utils/templateSamples";
 
 const OPTIONAL_FIELDS_HELP_URL =
 	"https://github.com/masaki39/simple-citations#-optional-fields";
@@ -256,8 +257,17 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 								control: { type: "toggle", key: "includeAbstract" },
 							},
 							{
+								name: "Sample template",
+								desc: "Insert a ready-made Bases view of related literature notes at the top of each note. Requires Bases (Obsidian 1.9+). Ignored when a template file is set below.",
+								control: {
+									type: "dropdown",
+									key: "templateSample",
+									options: templateSampleOptions(),
+								},
+							},
+							{
 								name: "Template file",
-								desc: "When set, add this template to the top of each literature note. Intended for dynamic templates such as Dataview.",
+								desc: "When set, add this template to the top of each literature note. Takes precedence over the sample template. Intended for dynamic templates such as Dataview.",
 								render: (setting: Setting) => this.renderTemplatePath(setting),
 							},
 						],
@@ -548,7 +558,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 	private renderTemplatePath(setting: Setting): void {
 		setting.setName("Template file");
 		setting.setDesc(
-			"When set, add this template to the top of each literature note. Intended for dynamic templates such as Dataview."
+			"When set, add this template to the top of each literature note. Takes precedence over the sample template. Intended for dynamic templates such as Dataview."
 		);
 		setting.addText((text) => {
 			const statusEl = createSpan();

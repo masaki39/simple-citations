@@ -261,7 +261,47 @@ The comment tag below is used to identify the template section.
 
 > [!note]
 > This template is applied to all notes and the content is static.
-> Therefore, it is recommended to use [Dataview](https://github.com/blacksmithgu/obsidian-dataview) for setting dynamic templates.
+> Therefore, it is recommended to use [Dataview](https://github.com/blacksmithgu/obsidian-dataview) or [Bases](https://help.obsidian.md/bases) for setting dynamic templates.
+
+#### Sample template
+
+Writing a Bases query by hand is the fiddly part, so a few ready-made ones are
+built in. Select one under **Sample template** and it is inserted at the top of
+every literature note — nothing to create or maintain. A configured **Template
+file** always takes precedence.
+
+| Sample | Shows |
+| --- | --- |
+| Same first author | Other literature notes whose first author matches this note's |
+| Same journal | Other literature notes published in the same journal |
+| Same first author and journal | Both views, stacked |
+
+Each sample is an embedded `base` block that reads `this` (the current note),
+so it works in any literature note without configuration. Requires Bases
+(Obsidian 1.9+). For example, the "Same first author" sample is:
+
+````markdown
+```base
+filters:
+  and:
+    - authors[0] == this.authors[0]
+    - file.path != this.file.path
+formulas:
+  Link: 'link(file.name, "link")'
+views:
+  - type: table
+    name: Same first author
+    order:
+      - formula.Link
+      - year
+      - journal
+      - title
+    sort:
+      - property: year
+        direction: DESC
+    limit: 20
+```
+````
 
 ## 🔗 Link Formatting
 
