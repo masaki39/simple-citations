@@ -8,11 +8,12 @@
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"test": "jest",
 		"sync-version": "node version-bump.mjs && git add manifest.json versions.json",
-		"version": "npm run sync-version"
+		"version": "pnpm run sync-version"
 	},
 	"keywords": [],
 	"author": "",
 	"license": "MIT",
+	"packageManager": "pnpm@11.21.0",
 	"devDependencies": {
 		"@types/jest": "^29.5.14",
 		"@types/node": "^16.11.6",
