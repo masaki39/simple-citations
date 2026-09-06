@@ -50,3 +50,14 @@ body.is-mobile .simple-citations-merge-list .setting-item > .setting-item-contro
 .is-mobile .simple-citations-merge-list .setting-item > .setting-item-control select {
 	width: 120px;
 }
+
+/* ── Settings: optional fields ── */
+
+/* Rows have no name; let the field input use the full row width. */
+.simple-citations-optional-field > .setting-item-control {
+	flex-grow: 1;
+}
+
+.simple-citations-optional-field > .setting-item-control input[type="text"] {
+	width: 100%;
+}

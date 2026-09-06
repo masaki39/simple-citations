@@ -198,16 +198,12 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 								void this.plugin.saveSettings().then(() => this.update());
 							},
 						},
-						onReorder: (oldIndex, newIndex) => {
-							moveItem(settings.optionalFields, oldIndex, newIndex);
-							void this.plugin.saveSettings().then(() => this.update());
-						},
 						onDelete: (index) => {
 							settings.optionalFields.splice(index, 1);
 							void this.plugin.saveSettings().then(() => this.update());
 						},
-						items: settings.optionalFields.map((field, index) => ({
-							name: field || "(empty)",
+						items: settings.optionalFields.map((_, index) => ({
+							name: "",
 							desc:
 								index === 0
 									? this.optionalFieldsDesc(
@@ -698,12 +694,12 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 
 	private renderOptionalFieldRow(setting: Setting, index: number): void {
 		const fields = this.plugin.settings.optionalFields;
+		setting.settingEl.addClass("simple-citations-optional-field");
 
-		// The list provides the drag handle and delete button; this row only
-		// owns the field-name input. The row name (and the merge-strategy rows
-		// that derive from these names) refresh on a full re-render, which would
-		// steal focus while typing — so it only runs once the input is left with
-		// a changed value.
+		// The list owns the delete button; this row is only the field-name
+		// input. The merge-strategy rows derive from these names, so a change
+		// needs a full re-render — but that steals focus while typing, so it
+		// only runs once the input is left with a changed value.
 		let committed = fields[index] ?? "";
 		const commitIfChanged = () => {
 			if ((fields[index] ?? "") !== committed) {
