@@ -46,9 +46,12 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 	async setControlValue(key: string, value: unknown): Promise<void> {
 		(this.plugin.settings as unknown as Record<string, unknown>)[key] = value;
 		await this.plugin.saveSettings();
-		// Toggling this shows/hides the base-property rows.
+		// Toggling this only flips the `visible` predicate on the base-property
+		// rows, which already exist in the definitions. Re-evaluate predicates in
+		// place rather than calling update(), which would re-render from the tab
+		// root and drop the user out of this sub-page.
 		if (key === "showBaseProperties") {
-			this.update();
+			this.refreshDomState();
 		}
 	}
 
@@ -220,6 +223,10 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				desc: "Export literature notes and PDFs with external tools. Desktop only.",
 				items: [
 					{
+						name: "Export folder",
+						render: (setting: Setting) => this.renderExportFolder(setting),
+					},
+					{
 						type: "group",
 						heading: "Pandoc",
 						items: [
@@ -238,8 +245,10 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 									}),
 							},
 							{
-								name: "Export folder",
-								render: (setting: Setting) => this.renderExportFolder(setting),
+								name: "Hard line breaks",
+								desc: 'Add "-f markdown+hard_line_breaks" so single newlines in the note become line breaks in the exported docx.',
+								visible: () => Platform.isDesktop,
+								control: { type: "toggle", key: "pandocHardLineBreaks" },
 							},
 							{
 								name: "Link citations",
@@ -265,7 +274,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 									type: "textarea",
 									key: "pandocArgs",
 									rows: 6,
-									placeholder: "Example: -f markdown+hard_line_breaks",
+									placeholder: "Example: --top-level-division=chapter",
 								},
 							},
 						],
@@ -384,7 +393,8 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		setting.setName("Export folder");
 		setting.descEl.empty();
 		setting.descEl.appendText(
-			"Absolute path to an export folder. Leave empty to export next to the source note. Select "
+			"Absolute path to an export folder, shared by the Pandoc and Poppler export commands. " +
+				"Leave empty to export next to the source note. Select "
 		);
 		setting.descEl.createEl("strong", { text: "Detect" });
 		setting.descEl.appendText(" to use your Downloads folder.");
@@ -392,7 +402,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		const statusEl = createSpan();
 		const refreshStatus = () => {
 			try {
-				const value = this.plugin.settings.pandocOutputPath;
+				const value = this.plugin.settings.exportFolderPath;
 				if (!value) {
 					statusEl.empty();
 					return;
@@ -407,9 +417,9 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 			setting.controlEl.insertBefore(statusEl, text.inputEl);
 			text
 				.setPlaceholder("Same as source note")
-				.setValue(this.plugin.settings.pandocOutputPath)
+				.setValue(this.plugin.settings.exportFolderPath)
 				.onChange(async (value) => {
-					this.plugin.settings.pandocOutputPath = value.trim();
+					this.plugin.settings.exportFolderPath = value.trim();
 					await this.plugin.saveSettings();
 					refreshStatus();
 				});
@@ -428,7 +438,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 										result.diagnostics.join("\n")
 								);
 								if (result.path) {
-									this.plugin.settings.pandocOutputPath = result.path;
+									this.plugin.settings.exportFolderPath = result.path;
 									await this.plugin.saveSettings();
 									text.setValue(result.path);
 									refreshStatus();
@@ -690,7 +700,11 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		this.bbtSignature = signature;
 		if (detected !== this.hasBbtFiles) {
 			this.hasBbtFiles = detected;
-			this.update();
+			// The BetterBibTeX rows are always in the definitions; only their
+			// `visible` predicate depends on this flag. Re-evaluate predicates in
+			// place rather than calling update(), which would re-render from the
+			// tab root and drop the user out of an open sub-page.
+			this.refreshDomState();
 		}
 	}
 

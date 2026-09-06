@@ -74,6 +74,7 @@ command: `Pandoc Citeproc Execution (docx)`
 
 Common Pandoc options are available as settings, so you do not have to remember the flags:
 
+- **Hard line breaks** (on by default): single newlines in the note become line breaks in the docx (`-f markdown+hard_line_breaks`).
 - **Link citations**: in-text citations link to the matching entry in the reference list (`--metadata link-citations=true`).
 - **Number sections**: headings are numbered in the exported docx (`--number-sections`).
 - **Reference document**: absolute path to a Word document (`.docx`) whose styles Pandoc uses as the template (`--reference-doc`).

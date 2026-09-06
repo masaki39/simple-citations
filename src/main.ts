@@ -57,12 +57,13 @@ export default class SimpleCitations extends Plugin {
 				const CurrentFileFolder = CurrentFilePath.split("/").slice(0, -1).join("/"); // current file folder
 				const CurrentFileName = CurrentFilePath.split("/").pop(); // current file name
 				const PandocInputFile = BasePath + "/" + CurrentFilePath; // input file
-				const PandocOutputPath = this.settings.pandocOutputPath ? normalizePath(this.settings.pandocOutputPath) : BasePath + "/" + CurrentFileFolder; // output path
+				const PandocOutputPath = this.settings.exportFolderPath ? normalizePath(this.settings.exportFolderPath) : BasePath + "/" + CurrentFileFolder; // output path
 				const PandocOutputFile = PandocOutputPath + "/" + CurrentFileName?.replace(/\.md$/, ".docx"); // output file
 				const PandocExtraArgs = this.settings.pandocArgs ? this.settings.pandocArgs.split(/[\s\n]+/) : [];
 
 				// preset args from the checkbox/path settings (extra args can still override these)
 				const PandocPresetArgs: string[] = [];
+				if (this.settings.pandocHardLineBreaks) PandocPresetArgs.push("-f", "markdown+hard_line_breaks");
 				if (this.settings.pandocLinkCitations) PandocPresetArgs.push("--metadata", "link-citations=true");
 				if (this.settings.pandocNumberSections) PandocPresetArgs.push("--number-sections");
 				if (this.settings.pandocReferenceDoc) PandocPresetArgs.push("--reference-doc", this.settings.pandocReferenceDoc);
@@ -244,6 +245,24 @@ export default class SimpleCitations extends Plugin {
 		// Ensure jsonUpdatedTimes is always an object
 		if (!this.settings.jsonUpdatedTimes || typeof this.settings.jsonUpdatedTimes !== 'object') {
 			this.settings.jsonUpdatedTimes = {};
+		}
+
+		// Migrate from old pandocOutputPath to exportFolderPath (now shared with Poppler)
+		if (data && 'pandocOutputPath' in data && typeof data.pandocOutputPath === 'string') {
+			if (!this.settings.exportFolderPath) {
+				this.settings.exportFolderPath = data.pandocOutputPath;
+			}
+			delete (this.settings as unknown as Record<string, unknown>).pandocOutputPath;
+			needsSave = true;
+		}
+
+		// Migrate the hard-line-breaks default out of the free-text args into its own toggle
+		if (data && 'pandocArgs' in data && !('pandocHardLineBreaks' in data)) {
+			const raw = typeof data.pandocArgs === 'string' ? data.pandocArgs : '';
+			const stripped = raw.replace(/-f\s+markdown\+hard_line_breaks/, '');
+			this.settings.pandocHardLineBreaks = stripped !== raw;
+			this.settings.pandocArgs = stripped.split(/[\s\n]+/).filter(Boolean).join(' ');
+			needsSave = true;
 		}
 
 		if (needsSave) {

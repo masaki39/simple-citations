@@ -26,7 +26,7 @@ export function registerPdfCommands(
 		name: 'Export PDF',
 		editorCallback: async (_editor: Editor, view: MarkdownView) => {
 			const settings = getSettings();
-			if (!settings.pandocOutputPath) {
+			if (!settings.exportFolderPath) {
 				new Notice('Export folder is not set.');
 				return;
 			}
@@ -36,7 +36,7 @@ export function registerPdfCommands(
 				const fs = requireNode<typeof import('fs/promises')>('fs/promises');
 				const path = requireNode<typeof import('path')>('path');
 				for (const src of pdfPaths) {
-					await fs.copyFile(src, path.join(settings.pandocOutputPath, path.basename(src)));
+					await fs.copyFile(src, path.join(settings.exportFolderPath, path.basename(src)));
 				}
 				new Notice('PDF export completed.');
 			} catch (error) {
@@ -50,7 +50,7 @@ export function registerPdfCommands(
 		name: 'Export PDF images',
 		editorCallback: async (_editor: Editor, view: MarkdownView) => {
 			const settings = getSettings();
-			if (!settings.pandocOutputPath) {
+			if (!settings.exportFolderPath) {
 				new Notice('Export folder is not set.');
 				return;
 			}
@@ -61,7 +61,7 @@ export function registerPdfCommands(
 				const { spawn } = requireNode<typeof import('child_process')>('child_process');
 				const path = requireNode<typeof import('path')>('path');
 				for (let i = 0; i < pdfPaths.length; i++) {
-					const prefix = path.join(settings.pandocOutputPath, `pdf${i + 1}`);
+					const prefix = path.join(settings.exportFolderPath, `pdf${i + 1}`);
 					await new Promise<void>((resolve, reject) => {
 						const proc = spawn(pdfimagesPath, ['-png', pdfPaths[i], prefix], { env: augmentedEnv() });
 						proc.on('close', (code) => {
