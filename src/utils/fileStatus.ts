@@ -1,6 +1,6 @@
 import { App, normalizePath, TFolder, setIcon } from "obsidian";
 
-function setStatusIcon(el: HTMLElement, valid: boolean) {
+export function setStatusIcon(el: HTMLElement, valid: boolean) {
     el.empty();
     el.addClass('simple-citations-status');
     el.removeClass('is-valid', 'is-invalid');

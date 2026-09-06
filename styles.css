@@ -20,6 +20,22 @@
 	color: var(--text-error);
 }
 
+/* ── Settings: pandoc / poppler path hint ── */
+
+.simple-citations-binary-hint:empty {
+	display: none;
+}
+
+.simple-citations-binary-hint {
+	margin-top: 4px;
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.simple-citations-binary-hint.is-invalid {
+	color: var(--text-error);
+}
+
 /* ── Settings: merge strategies (mobile) ── */
 
 body.is-mobile .simple-citations-merge-list .setting-item {

@@ -10,6 +10,8 @@ import { loadBibliographyData, isBetterBibTeXFormat } from './utils/loadBibliogr
 import { checkRequiredFiles } from './utils/checkRequiredFiles';
 import { registerPdfCommands } from './commands/pdfCommands';
 import { registerSetCslStyleCommand } from './commands/setCslStyle';
+import { augmentedEnv } from './utils/binaryPath';
+import { requireNode } from './utils/nodeModules';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -50,7 +52,7 @@ export default class SimpleCitations extends Plugin {
 
 				// pandoc settings
 				const BasePath = (this.app.vault.adapter as unknown as { getBasePath(): string }).getBasePath();
-				const PandocPath = normalizePath(this.settings.inputPandocPath) || "pandoc"; // pandoc path
+				const PandocPath = this.settings.inputPandocPath || "pandoc"; // pandoc path (absolute path or bare name)
 				const CurrentFilePath = normalizePath(activeFile.path); // current file path
 				const CurrentFileFolder = CurrentFilePath.split("/").slice(0, -1).join("/"); // current file folder
 				const CurrentFileName = CurrentFilePath.split("/").pop(); // current file name
@@ -87,10 +89,10 @@ export default class SimpleCitations extends Plugin {
 
 				// execute pandoc
 				try {
-					const { spawn } = await import('child_process');
+					const { spawn } = requireNode<typeof import('child_process')>('child_process');
 					const pandocProcess = spawn(PandocPath,
 						[PandocInputFile, "-o", PandocOutputFile, ...PandocArgs],
-						{env: process.env});
+						{env: augmentedEnv()});
 
 					// error handling
 					pandocProcess.on('error', (err) => {

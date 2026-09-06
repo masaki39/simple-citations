@@ -1,5 +1,7 @@
 import { App, Notice, Plugin, MarkdownView, Editor, Platform } from 'obsidian';
 import { SimpleCitationsSettings } from '../settings/settings';
+import { augmentedEnv } from '../utils/binaryPath';
+import { requireNode } from '../utils/nodeModules';
 
 function resolvePdfPaths(app: App, view: MarkdownView): string[] | null {
 	const file = view.file;
@@ -31,8 +33,8 @@ export function registerPdfCommands(
 			const pdfPaths = resolvePdfPaths(app, view);
 			if (!pdfPaths) return;
 			try {
-				const fs = await import('fs/promises');
-				const path = await import('path');
+				const fs = requireNode<typeof import('fs/promises')>('fs/promises');
+				const path = requireNode<typeof import('path')>('path');
 				for (const src of pdfPaths) {
 					await fs.copyFile(src, path.join(settings.pandocOutputPath, path.basename(src)));
 				}
@@ -56,12 +58,12 @@ export function registerPdfCommands(
 			if (!pdfPaths) return;
 			const pdfimagesPath = settings.pdfimagesPath || 'pdfimages';
 			try {
-				const { spawn } = await import('child_process');
-				const path = await import('path');
+				const { spawn } = requireNode<typeof import('child_process')>('child_process');
+				const path = requireNode<typeof import('path')>('path');
 				for (let i = 0; i < pdfPaths.length; i++) {
 					const prefix = path.join(settings.pandocOutputPath, `pdf${i + 1}`);
 					await new Promise<void>((resolve, reject) => {
-						const proc = spawn(pdfimagesPath, ['-png', pdfPaths[i], prefix], { env: process.env });
+						const proc = spawn(pdfimagesPath, ['-png', pdfPaths[i], prefix], { env: augmentedEnv() });
 						proc.on('close', (code) => {
 							if (code === 0) resolve();
 							else reject(new Error(`pdfimages exited with code ${code}`));

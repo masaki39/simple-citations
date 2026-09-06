@@ -4,7 +4,6 @@ import {
 	Platform,
 	PluginSettingTab,
 	Setting,
-	SettingDefinitionEmpty,
 	SettingDefinitionItem,
 	normalizePath,
 } from "obsidian";
@@ -13,7 +12,15 @@ import {
 	updateSettingJsonStatus,
 	updateSettingFolderStatus,
 	updateSettingTemplateStatus,
+	setStatusIcon,
 } from "../utils/fileStatus";
+import {
+	BinarySpec,
+	detectBinary,
+	probeBinary,
+	PANDOC_SPEC,
+	PDFIMAGES_SPEC,
+} from "../utils/binaryPath";
 import { JsonFileSuggest, FolderSuggest } from "./FileSuggest";
 import { getStrategy, getDefaultStrategy } from "../utils/mergeStrategies";
 import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
@@ -161,7 +168,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					{
 						name: "Duplicate handling",
 						desc: "When the same citation key appears in multiple bibliography files, choose how each property is combined.",
-					} as SettingDefinitionEmpty,
+					},
 					...customMergeProperties.map((prop) => ({
 						name: prop,
 						render: (setting: Setting) => this.renderMergeStrategy(setting, prop),
@@ -201,16 +208,16 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					{
 						name: "Pandoc is only available on desktop.",
 						visible: () => Platform.isMobile,
-					} as SettingDefinitionEmpty,
+					},
 					{
 						name: "Pandoc path",
-						desc: createFragment((f) => {
-							f.createEl("a", { text: "Pandoc", href: "https://pandoc.org" });
-							f.appendText(
-								" must be installed. Mac/Linux: `which pandoc`, Windows: `where pandoc`."
-							);
-						}),
-						control: { type: "text", key: "inputPandocPath", placeholder: "pandoc" },
+						visible: () => Platform.isDesktop,
+						render: (setting: Setting) =>
+							this.renderBinaryPath(setting, "inputPandocPath", PANDOC_SPEC, {
+								toolName: "Pandoc",
+								toolUrl: "https://pandoc.org",
+								usedBy: "Pandoc Citeproc Execution (docx)",
+							}),
 					},
 					{
 						name: "Export folder",
@@ -240,19 +247,16 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					{
 						name: "Poppler is only available on desktop.",
 						visible: () => Platform.isMobile,
-					} as SettingDefinitionEmpty,
+					},
 					{
 						name: "pdfimages path",
-						desc: createFragment((f) => {
-							f.createEl("a", {
-								text: "Poppler",
-								href: "https://poppler.freedesktop.org",
-							});
-							f.appendText(
-								" must be installed. Mac/Linux: `which pdfimages`, Windows: `where pdfimages`."
-							);
-						}),
-						control: { type: "text", key: "pdfimagesPath", placeholder: "pdfimages" },
+						visible: () => Platform.isDesktop,
+						render: (setting: Setting) =>
+							this.renderBinaryPath(setting, "pdfimagesPath", PDFIMAGES_SPEC, {
+								toolName: "Poppler",
+								toolUrl: "https://poppler.freedesktop.org",
+								usedBy: "Export PDF images",
+							}),
 					},
 				],
 			},
@@ -364,6 +368,115 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		});
 	}
 
+	private renderBinaryPath(
+		setting: Setting,
+		key: "inputPandocPath" | "pdfimagesPath",
+		spec: BinarySpec,
+		docs: { toolName: string; toolUrl: string; usedBy: string }
+	): void {
+		setting.setName(`${spec.name} path`);
+		setting.descEl.empty();
+		setting.descEl.appendText("Used by ");
+		setting.descEl.createEl("strong", { text: docs.usedBy });
+		setting.descEl.appendText(". Leave empty if the status is a green check; otherwise select ");
+		setting.descEl.createEl("strong", { text: "Detect" });
+		setting.descEl.appendText(" or enter an absolute path. Requires ");
+		setting.descEl.createEl("a", { text: docs.toolName, href: docs.toolUrl });
+		setting.descEl.appendText(".");
+
+		const hintEl = setting.descEl.createDiv({ cls: "simple-citations-binary-hint" });
+		const statusEl = createSpan();
+
+		const showStatus = (
+			state: "unknown" | "checking" | "auto" | "ok" | "missing"
+		) => {
+			try {
+				statusEl.empty();
+				hintEl.setText("");
+				hintEl.removeClass("is-invalid");
+				if (state === "checking") {
+					statusEl.setText("…");
+				} else if (state === "auto") {
+					setStatusIcon(statusEl, true);
+					hintEl.setText("Auto-detected on PATH — no path needed.");
+				} else if (state === "ok") {
+					setStatusIcon(statusEl, true);
+				} else if (state === "missing") {
+					setStatusIcon(statusEl, false);
+					hintEl.setText(`\`${spec.name}\` was not found. Select Detect, or enter an absolute path.`);
+					hintEl.addClass("is-invalid");
+				}
+			} catch {
+				/* status is cosmetic */
+			}
+		};
+
+		const validate = async () => {
+			const value = this.plugin.settings[key];
+			try {
+				showStatus("checking");
+				const ok = await probeBinary(value, spec);
+				showStatus(ok ? (value ? "ok" : "auto") : "missing");
+			} catch {
+				showStatus("missing");
+			}
+		};
+
+		setting.addText((text) => {
+			setting.controlEl.insertBefore(statusEl, text.inputEl);
+			text
+				.setPlaceholder(spec.name)
+				.setValue(this.plugin.settings[key])
+				.onChange(async (value) => {
+					this.plugin.settings[key] = value.trim();
+					await this.plugin.saveSettings();
+					showStatus("unknown");
+				});
+			text.inputEl.addEventListener("blur", () => void validate());
+
+			setting.addButton((button) => {
+				button
+					.setButtonText("Detect")
+					.setTooltip(`Search common locations for ${spec.name}`)
+					.onClick(async () => {
+						button.setDisabled(true);
+						try {
+							showStatus("checking");
+							const result = await detectBinary(spec, this.plugin.settings[key]);
+							console.warn(
+								`[simple-citations] detect ${spec.name}:\n` +
+									result.diagnostics.join("\n")
+							);
+							if (result.path) {
+								this.plugin.settings[key] = result.path;
+								await this.plugin.saveSettings();
+								text.setValue(result.path);
+								showStatus("ok");
+								new Notice(
+									result.version
+										? `Found ${spec.name}: ${result.version}`
+										: `Found ${spec.name} at ${result.path}`
+								);
+							} else {
+								showStatus("missing");
+								new Notice(
+									`Could not find ${spec.name}. Enter its absolute path, ` +
+										`or open the developer console (Ctrl/Cmd+Shift+I) for details.`
+								);
+							}
+						} catch (error) {
+							showStatus("missing");
+							new Notice(`Detection failed: ${(error as Error).message}`);
+						} finally {
+							button.setDisabled(false);
+						}
+					});
+			});
+		});
+
+		void validate();
+	}
+
 	private renderOptionalFields(setting: Setting): void {
 		setting.setName("Optional fields");
 		setting.setDesc(
@@ -424,29 +537,46 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 			})
 			.join(" ");
 		if (signature === this.bbtSignature) return;
-		this.bbtSignature = signature;
 
 		const detected = await this.detectBbtFiles();
+		// Inconclusive scan (a file could not be resolved, read, or parsed —
+		// e.g. an early scan before the vault is ready, or a bibliography file
+		// mid-rewrite by Zotero): keep the current flag and leave the cache
+		// key unset so the next render retries instead of caching a false
+		// negative that hides the BetterBibTeX toggles until the next mtime
+		// change.
+		if (detected === null) return;
+
+		this.bbtSignature = signature;
 		if (detected !== this.hasBbtFiles) {
 			this.hasBbtFiles = detected;
 			this.update();
 		}
 	}
 
-	private async detectBbtFiles(): Promise<boolean> {
+	/**
+	 * Returns true when any configured bibliography file is BetterBibTeX JSON,
+	 * false when every file was read and none are, and null when at least one
+	 * file could not be resolved, read, or parsed (so the answer is unknown).
+	 */
+	private async detectBbtFiles(): Promise<boolean | null> {
+		let inconclusive = false;
 		for (const path of this.plugin.settings.jsonPaths) {
 			if (!path) continue;
 			const file = this.app.vault.getFileByPath(normalizePath(path));
-			if (!file) continue;
+			if (!file) {
+				inconclusive = true;
+				continue;
+			}
 			try {
 				const contents = await this.app.vault.cachedRead(file);
 				const data = JSON.parse(contents);
 				if (isBetterBibTeXFormat(data)) return true;
 			} catch {
-				/* ignore parse errors */
+				inconclusive = true;
 			}
 		}
-		return false;
+		return inconclusive ? null : false;
 	}
 }
 
