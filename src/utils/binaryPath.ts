@@ -95,7 +95,7 @@ const DETECT_TIMEOUT_MS = 25000;
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
 	return new Promise<T>((resolve) => {
 		let done = false;
-		const timer = setTimeout(() => {
+		const timer = window.setTimeout(() => {
 			if (!done) {
 				done = true;
 				resolve(fallback);
@@ -105,14 +105,14 @@ function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T
 			.then((value) => {
 				if (!done) {
 					done = true;
-					clearTimeout(timer);
+					window.clearTimeout(timer);
 					resolve(value);
 				}
 			})
 			.catch(() => {
 				if (!done) {
 					done = true;
-					clearTimeout(timer);
+					window.clearTimeout(timer);
 					resolve(fallback);
 				}
 			});
@@ -156,11 +156,11 @@ async function run(
 	const timeoutMs = options.timeoutMs ?? PROBE_TIMEOUT_MS;
 	return new Promise<RunResult>((resolve) => {
 		let settled = false;
-		let timer: ReturnType<typeof setTimeout> | undefined;
+		let timer: number | undefined;
 		const finish = (result: RunResult) => {
 			if (settled) return;
 			settled = true;
-			if (timer) clearTimeout(timer);
+			if (timer) window.clearTimeout(timer);
 			resolve(result);
 		};
 		try {
@@ -175,7 +175,7 @@ async function run(
 				finish({ output, started: false, error: err.code ?? err.message })
 			);
 			proc.on("close", () => finish({ output, started: true }));
-			timer = setTimeout(() => {
+			timer = window.setTimeout(() => {
 				try {
 					proc.kill();
 				} catch {
