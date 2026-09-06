@@ -35,10 +35,14 @@ pnpm run build
 
 ## Linting
 
-- To use eslint install eslint from terminal: `pnpm add -g eslint`
-- To use eslint to analyze this project use this command: `eslint main.ts`
-- eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder: `eslint ./src/`
+- ESLint is a dev dependency with a flat config (`eslint.config.mjs`) based on
+  the Obsidian sample plugin: ESLint core recommended + typescript-eslint
+  type-checked + `eslint-plugin-obsidianmd` (Obsidian-specific rules).
+- Run `pnpm lint` to check the whole project, `pnpm lint:fix` to auto-fix.
+- The type-checked "unsafe any" rules are turned off in `src/` because the
+  plugin shapes untyped external JSON (Zotero exports); re-enable them if that
+  data gets typed.
+- `pnpm lint` must exit clean (warnings are allowed, errors are not) before a release.
 
 ## File & folder conventions
 

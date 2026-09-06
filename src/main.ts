@@ -34,7 +34,7 @@ export default class SimpleCitations extends Plugin {
 
 		if (Platform.isDesktop) this.addCommand({
 			id: 'execute-pandoc',
-			name: 'Pandoc Citeproc Execution (docx)',
+			name: 'Pandoc citeproc execution (docx)',
 			callback: async () => {
 				// get file
 				const activeFile = this.app.workspace.getActiveFile();
@@ -145,7 +145,7 @@ export default class SimpleCitations extends Plugin {
 
 		this.addCommand({
 			id: 'copy-missing-note-links',
-			name: 'Copy missing note links not included in json file',
+			name: 'Copy missing note links not included in JSON file',
 			callback: async () => {
 
 				const { jsonFiles, folder } = checkRequiredFiles(this.app, this.settings);

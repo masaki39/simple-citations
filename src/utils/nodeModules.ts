@@ -15,7 +15,6 @@ type NodeRequireFn = (id: string) => unknown;
 function getRequire(): NodeRequireFn | null {
 	// Obsidian runs plugins in a CommonJS context where `require` is a global; it
 	// is the reliable loader for Node built-ins (see the module comment above).
-	// eslint-disable-next-line @typescript-eslint/no-var-requires -- CommonJS require is intentional here
 	if (typeof require === "function") return require as NodeRequireFn;
 	const w = activeWindow as unknown as { require?: NodeRequireFn };
 	return typeof w.require === "function" ? w.require : null;

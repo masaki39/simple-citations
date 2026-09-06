@@ -30,7 +30,7 @@ class CslStyleSuggestModal extends FuzzySuggestModal<CslStyle> {
 export function registerSetCslStyleCommand(plugin: Plugin, app: App) {
 	plugin.addCommand({
 		id: 'set-csl-style',
-		name: 'Set citation style (csl property)',
+		name: 'Set citation style (CSL property)',
 		callback: async () => {
 			const activeFile = app.workspace.getActiveFile();
 			if (!activeFile) {

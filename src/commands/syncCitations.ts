@@ -34,10 +34,10 @@ export class SyncCitations {
 				const modal = new Modal(this.app);
 				modal.setTitle('Full sync literature notes');
 				modal.contentEl.createEl('p', {
-					text: 'This will clear ALL existing properties in each literature note and rebuild them entirely from the bibliography JSON and current settings. Any manually added properties will be lost.',
+					text: 'This will clear all existing properties in each literature note and rebuild them entirely from the bibliography JSON and current settings. Any manually added properties will be lost.',
 				});
 				modal.contentEl.createEl('p', {
-					text: 'This is useful when settings or bibliography structure have changed and you want a clean sync. Use normal "Sync literature notes" if you only want to add and update.',
+					text: 'This is useful when settings or bibliography structure have changed and you want a clean sync. Use the normal sync command if you only want to add and update.',
 					cls: 'mod-warning',
 				});
 				new Setting(modal.contentEl)
