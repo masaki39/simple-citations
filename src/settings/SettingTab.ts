@@ -17,6 +17,7 @@ import {
 import {
 	BinarySpec,
 	detectBinary,
+	fileExists,
 	isAbsolutePath,
 	probeBinary,
 	PANDOC_SPEC,
@@ -124,136 +125,170 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				],
 			},
 			{
-				type: "group",
-				heading: "Additional properties",
+				type: "page",
+				name: "Note content",
+				desc: "Extra properties and content added to each literature note.",
 				items: [
 					{
-						name: "Include author tag",
-						desc: "When enabled, add a tag with the first author's name.",
-						control: { type: "toggle", key: "includeAuthorTag" },
+						type: "group",
+						heading: "Additional properties",
+						items: [
+							{
+								name: "Include author tag",
+								desc: "When enabled, add a tag with the first author's name.",
+								control: { type: "toggle", key: "includeAuthorTag" },
+							},
+							{
+								name: "Include journal tag",
+								desc: "When enabled, add a tag with the journal name.",
+								control: { type: "toggle", key: "includeJournalTag" },
+							},
+							{
+								name: "Include bibliography",
+								desc: 'When enabled, add a "bibliography" property listing which bibliography file(s) the citation was found in (e.g. ["My Library"]).',
+								control: { type: "toggle", key: "includeBibliography" },
+							},
+							{
+								name: "Include PDF paths (BetterBibTeX JSON)",
+								desc: 'Automatically add a "pdf" property with local PDF paths extracted from attachments.',
+								visible: () => this.hasBbtFiles,
+								control: { type: "toggle", key: "includeBbtPdf" },
+							},
+							{
+								name: "Include collections (BetterBibTeX JSON)",
+								desc: 'Automatically add a "collections" property with the Zotero collection names the item belongs to.',
+								visible: () => this.hasBbtFiles,
+								control: { type: "toggle", key: "includeBbtCollections" },
+							},
+							{
+								name: "Optional fields",
+								desc: "Extra fields to copy from the bibliography JSON. One per line, top level only.",
+								render: (setting: Setting) => this.renderOptionalFields(setting),
+							},
+						],
 					},
 					{
-						name: "Include journal tag",
-						desc: "When enabled, add a tag with the journal name.",
-						control: { type: "toggle", key: "includeJournalTag" },
+						type: "group",
+						heading: "Merge strategies",
+						cls: "simple-citations-merge-list",
+						visible: () =>
+							this.plugin.settings.jsonPaths.filter((p) => p).length > 1,
+						items: [
+							{
+								name: "Duplicate handling",
+								desc: "When the same citation key appears in multiple bibliography files, choose how each property is combined.",
+							},
+							...customMergeProperties.map((prop) => ({
+								name: prop,
+								render: (setting: Setting) =>
+									this.renderMergeStrategy(setting, prop),
+							})),
+							{
+								name: "Show base properties",
+								desc: "Built-in properties managed by the plugin. Defaults: collections → Merge, others → Priority.",
+								control: { type: "toggle", key: "showBaseProperties" },
+							},
+							...BASE_PROPERTIES.map((prop) => ({
+								name: prop,
+								visible: () => this.plugin.settings.showBaseProperties,
+								render: (setting: Setting) =>
+									this.renderMergeStrategy(setting, prop),
+							})),
+						],
 					},
 					{
-						name: "Include bibliography",
-						desc: 'When enabled, add a "bibliography" property listing which bibliography file(s) the citation was found in (e.g. ["My Library"]).',
-						control: { type: "toggle", key: "includeBibliography" },
-					},
-					{
-						name: "Include PDF paths (BetterBibTeX JSON)",
-						desc: 'Automatically add a "pdf" property with local PDF paths extracted from attachments.',
-						visible: () => this.hasBbtFiles,
-						control: { type: "toggle", key: "includeBbtPdf" },
-					},
-					{
-						name: "Include collections (BetterBibTeX JSON)",
-						desc: 'Automatically add a "collections" property with the Zotero collection names the item belongs to.',
-						visible: () => this.hasBbtFiles,
-						control: { type: "toggle", key: "includeBbtCollections" },
-					},
-					{
-						name: "Optional fields",
-						desc: "Extra fields to copy from the bibliography JSON. One per line, top level only.",
-						render: (setting: Setting) => this.renderOptionalFields(setting),
+						type: "group",
+						heading: "Additional content",
+						items: [
+							{
+								name: "Include abstract",
+								desc: "When enabled, add the abstract to the top of each literature note.",
+								control: { type: "toggle", key: "includeAbstract" },
+							},
+							{
+								name: "Template file",
+								desc: "When set, add this template to the top of each literature note. Intended for dynamic templates such as Dataview.",
+								render: (setting: Setting) => this.renderTemplatePath(setting),
+							},
+						],
 					},
 				],
 			},
 			{
-				type: "group",
-				heading: "Merge strategies",
-				cls: "simple-citations-merge-list",
-				visible: () => this.plugin.settings.jsonPaths.filter((p) => p).length > 1,
+				type: "page",
+				name: "Export",
+				desc: "Export literature notes and PDFs with external tools. Desktop only.",
 				items: [
 					{
-						name: "Duplicate handling",
-						desc: "When the same citation key appears in multiple bibliography files, choose how each property is combined.",
-					},
-					...customMergeProperties.map((prop) => ({
-						name: prop,
-						render: (setting: Setting) => this.renderMergeStrategy(setting, prop),
-					})),
-					{
-						name: "Show base properties",
-						desc: "Built-in properties managed by the plugin. Defaults: collections → Merge, others → Priority.",
-						control: { type: "toggle", key: "showBaseProperties" },
-					},
-					...BASE_PROPERTIES.map((prop) => ({
-						name: prop,
-						visible: () => this.plugin.settings.showBaseProperties,
-						render: (setting: Setting) => this.renderMergeStrategy(setting, prop),
-					})),
-				],
-			},
-			{
-				type: "group",
-				heading: "Additional content",
-				items: [
-					{
-						name: "Include abstract",
-						desc: "When enabled, add the abstract to the top of each literature note.",
-						control: { type: "toggle", key: "includeAbstract" },
-					},
-					{
-						name: "Template file",
-						desc: "When set, add this template to the top of each literature note. Intended for dynamic templates such as Dataview.",
-						render: (setting: Setting) => this.renderTemplatePath(setting),
-					},
-				],
-			},
-			{
-				type: "group",
-				heading: "Pandoc",
-				items: [
-					{
-						name: "Pandoc is only available on desktop.",
-						visible: () => Platform.isMobile,
-					},
-					{
-						name: "Pandoc path",
-						visible: () => Platform.isDesktop,
-						render: (setting: Setting) =>
-							this.renderBinaryPath(setting, "inputPandocPath", PANDOC_SPEC, {
-								toolName: "Pandoc",
-								toolUrl: "https://pandoc.org",
-								usedBy: "Pandoc Citeproc Execution (docx)",
-							}),
+						type: "group",
+						heading: "Pandoc",
+						items: [
+							{
+								name: "Pandoc is only available on desktop.",
+								visible: () => Platform.isMobile,
+							},
+							{
+								name: "Pandoc path",
+								visible: () => Platform.isDesktop,
+								render: (setting: Setting) =>
+									this.renderBinaryPath(setting, "inputPandocPath", PANDOC_SPEC, {
+										toolName: "Pandoc",
+										toolUrl: "https://pandoc.org",
+										usedBy: "Pandoc Citeproc Execution (docx)",
+									}),
+							},
+							{
+								name: "Export folder",
+								render: (setting: Setting) => this.renderExportFolder(setting),
+							},
+							{
+								name: "Link citations",
+								desc: 'Add "--metadata link-citations=true" so in-text citations link to the reference list in the exported docx.',
+								visible: () => Platform.isDesktop,
+								control: { type: "toggle", key: "pandocLinkCitations" },
+							},
+							{
+								name: "Number sections",
+								desc: 'Add "--number-sections" so headings are numbered in the exported docx.',
+								visible: () => Platform.isDesktop,
+								control: { type: "toggle", key: "pandocNumberSections" },
+							},
+							{
+								name: "Reference document",
+								visible: () => Platform.isDesktop,
+								render: (setting: Setting) => this.renderReferenceDoc(setting),
+							},
+							{
+								name: "Extra Pandoc arguments",
+								desc: "Extra command line arguments for Pandoc. Absolute paths only. New lines are turned into spaces. Citeproc and bibliography are added automatically.",
+								control: {
+									type: "textarea",
+									key: "pandocArgs",
+									rows: 6,
+									placeholder: "Example: -f markdown+hard_line_breaks",
+								},
+							},
+						],
 					},
 					{
-						name: "Export folder",
-						render: (setting: Setting) => this.renderExportFolder(setting),
-					},
-					{
-						name: "Extra Pandoc arguments",
-						desc: "Extra command line arguments for Pandoc. Absolute paths only. New lines are turned into spaces. Citeproc and bibliography are added automatically.",
-						control: {
-							type: "textarea",
-							key: "pandocArgs",
-							rows: 6,
-							placeholder: "Example: -f markdown+hard_line_breaks",
-						},
-					},
-				],
-			},
-			{
-				type: "group",
-				heading: "Poppler",
-				items: [
-					{
-						name: "Poppler is only available on desktop.",
-						visible: () => Platform.isMobile,
-					},
-					{
-						name: "pdfimages path",
-						visible: () => Platform.isDesktop,
-						render: (setting: Setting) =>
-							this.renderBinaryPath(setting, "pdfimagesPath", PDFIMAGES_SPEC, {
-								toolName: "Poppler",
-								toolUrl: "https://poppler.freedesktop.org",
-								usedBy: "Export PDF images",
-							}),
+						type: "group",
+						heading: "Poppler",
+						items: [
+							{
+								name: "Poppler is only available on desktop.",
+								visible: () => Platform.isMobile,
+							},
+							{
+								name: "pdfimages path",
+								visible: () => Platform.isDesktop,
+								render: (setting: Setting) =>
+									this.renderBinaryPath(setting, "pdfimagesPath", PDFIMAGES_SPEC, {
+										toolName: "Poppler",
+										toolUrl: "https://poppler.freedesktop.org",
+										usedBy: "Export PDF images",
+									}),
+							},
+						],
 					},
 				],
 			},
@@ -410,6 +445,44 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 						});
 				});
 			}
+		});
+
+		refreshStatus();
+	}
+
+	private renderReferenceDoc(setting: Setting): void {
+		setting.setName("Reference document");
+		setting.descEl.empty();
+		setting.descEl.appendText(
+			"Absolute path to a Word document (.docx) whose styles Pandoc uses as the template. Leave empty for Pandoc's default. Adds "
+		);
+		setting.descEl.createEl("code", { text: "--reference-doc" });
+		setting.descEl.appendText(".");
+
+		const statusEl = createSpan();
+		const refreshStatus = () => {
+			try {
+				const value = this.plugin.settings.pandocReferenceDoc;
+				if (!value) {
+					statusEl.empty();
+					return;
+				}
+				setStatusIcon(statusEl, isAbsolutePath(value) && fileExists(value));
+			} catch {
+				/* status is cosmetic */
+			}
+		};
+
+		setting.addText((text) => {
+			setting.controlEl.insertBefore(statusEl, text.inputEl);
+			text
+				.setPlaceholder("Pandoc default")
+				.setValue(this.plugin.settings.pandocReferenceDoc)
+				.onChange(async (value) => {
+					this.plugin.settings.pandocReferenceDoc = value.trim();
+					await this.plugin.saveSettings();
+					refreshStatus();
+				});
 		});
 
 		refreshStatus();

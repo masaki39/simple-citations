@@ -377,7 +377,7 @@ export function isAbsolutePath(value: string): boolean {
 	return value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value);
 }
 
-function fileExists(target: string): boolean {
+export function fileExists(target: string): boolean {
 	const result = tryRequireNode<FsModule>("fs");
 	if (!result.ok) {
 		moduleLoadError = `fs: ${result.error}`;

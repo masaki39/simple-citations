@@ -61,6 +61,12 @@ export default class SimpleCitations extends Plugin {
 				const PandocOutputFile = PandocOutputPath + "/" + CurrentFileName?.replace(/\.md$/, ".docx"); // output file
 				const PandocExtraArgs = this.settings.pandocArgs ? this.settings.pandocArgs.split(/[\s\n]+/) : [];
 
+				// preset args from the checkbox/path settings (extra args can still override these)
+				const PandocPresetArgs: string[] = [];
+				if (this.settings.pandocLinkCitations) PandocPresetArgs.push("--metadata", "link-citations=true");
+				if (this.settings.pandocNumberSections) PandocPresetArgs.push("--number-sections");
+				if (this.settings.pandocReferenceDoc) PandocPresetArgs.push("--reference-doc", this.settings.pandocReferenceDoc);
+
 				// build bibliography args — BBT JSON files are excluded (not supported by citeproc)
 				const bibArgs: string[] = [];
 				for (const path of this.settings.jsonPaths) {
@@ -84,6 +90,7 @@ export default class SimpleCitations extends Plugin {
 				const PandocArgs = [
 					"--citeproc",
 					...bibArgs,
+					...PandocPresetArgs,
 					...PandocExtraArgs
 				];
 

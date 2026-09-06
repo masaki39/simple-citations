@@ -72,6 +72,13 @@ command: `Pandoc Citeproc Execution (docx)`
 - You can download or get url of the csl file from [here](https://www.zotero.org/styles).
 - Or run the command `Set citation style (csl property)` to search the Zotero style repository and write the selected style URL to the `csl` property of the active note automatically.
 
+Common Pandoc options are available as settings, so you do not have to remember the flags:
+
+- **Link citations**: in-text citations link to the matching entry in the reference list (`--metadata link-citations=true`).
+- **Number sections**: headings are numbered in the exported docx (`--number-sections`).
+- **Reference document**: absolute path to a Word document (`.docx`) whose styles Pandoc uses as the template (`--reference-doc`).
+- **Extra Pandoc arguments** still accepts any other flags, and takes precedence over the options above.
+
 The result file(docx) is as follows:
 
 ![](./assets/スクリーンショット%202025-03-25%2021.02.08.jpg)

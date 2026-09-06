@@ -17,6 +17,9 @@ export interface SimpleCitationsSettings {
 	jsonUpdatedTimes: Record<string, number>;
 	inputPandocPath: string;
 	pandocOutputPath: string;
+	pandocLinkCitations: boolean;
+	pandocNumberSections: boolean;
+	pandocReferenceDoc: string;
 	pandocArgs: string;
 	includeBbtPdf: boolean;
 	includeBbtCollections: boolean;
@@ -42,6 +45,9 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	jsonUpdatedTimes: {},
 	inputPandocPath: "",
 	pandocOutputPath: "",
+	pandocLinkCitations: false,
+	pandocNumberSections: false,
+	pandocReferenceDoc: "",
 	pandocArgs: "-f markdown+hard_line_breaks",
 	includeBbtPdf: true,
 	includeBbtCollections: true,
