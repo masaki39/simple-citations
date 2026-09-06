@@ -186,22 +186,19 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 						],
 					},
 					{
-						type: "list",
-						heading: "Optional fields",
-						extraButtons: [
-							(button) =>
-								button
-									.setIcon("help")
-									.setTooltip("How to add fields in Zotero")
-									.onClick(() =>
-										window.open(OPTIONAL_FIELDS_HELP_URL, "_blank")
-									),
-						],
-						emptyState: this.optionalFieldsDesc(
-							"No optional fields yet. Add a top-level field from the bibliography JSON " +
-								"(e.g. one added via a BetterBibTeX postscript) to copy it into each note. " +
+						// Persistent lead-in for the list below — a list heading
+						// carries no description, so this sits just above it.
+						name: "",
+						desc: this.optionalFieldsDesc(
+							"Extra top-level fields to copy from the bibliography JSON into each note's properties. " +
 								"Only text, number, and list values are copied. "
 						),
+					},
+					{
+						type: "list",
+						heading: "Optional fields",
+						emptyState:
+							"No optional fields added yet. Use the + button to add one.",
 						addItem: {
 							name: "Add optional field",
 							action: () => {
