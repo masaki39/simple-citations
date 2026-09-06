@@ -195,9 +195,11 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 						],
 					},
 					{
-						// Persistent lead-in for the list below — a list heading
-						// carries no description, so this sits just above it.
-						name: "",
+						// Section title + persistent description for the list
+						// below. A list's own heading carries no description, and
+						// a description-only row is dropped by the renderer, so
+						// this titled row stands in as the list's header.
+						name: "Optional fields",
 						desc: this.optionalFieldsDesc(
 							"Extra top-level fields to copy from the bibliography JSON into each note's properties. " +
 								"Only text, number, and list values are copied. "
@@ -205,7 +207,6 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					},
 					{
 						type: "list",
-						heading: "Optional fields",
 						emptyState:
 							"No optional fields added yet. Use the + button to add one.",
 						addItem: {
