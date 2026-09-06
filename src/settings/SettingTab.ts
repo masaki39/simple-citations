@@ -24,15 +24,20 @@ import {
 	PDFIMAGES_SPEC,
 } from "../utils/binaryPath";
 import { detectDownloadsDir, directoryExists } from "../utils/downloadsDir";
-import { JsonFileSuggest, FolderSuggest } from "./FileSuggest";
+import { JsonFileSuggest, FolderSuggest, BibFieldSuggest } from "./FileSuggest";
 import { getStrategy, getDefaultStrategy } from "../utils/mergeStrategies";
 import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
-import { isBetterBibTeXFormat } from "../utils/loadBibliographyData";
+import { isBetterBibTeXFormat, loadBibliographyData } from "../utils/loadBibliographyData";
+
+const OPTIONAL_FIELDS_HELP_URL =
+	"https://github.com/masaki39/simple-citations#-optional-fields";
 
 export class SimpleCitationsSettingTab extends PluginSettingTab {
 	plugin: SimpleCitations;
 	private hasBbtFiles = false;
 	private bbtSignature: string | null = null;
+	private bibFieldNames: string[] = [];
+	private bibFieldSignature: string | null = null;
 
 	constructor(app: App, plugin: SimpleCitations) {
 		super(app, plugin);
@@ -58,13 +63,27 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 	getSettingDefinitions(): SettingDefinitionItem[] {
 		// Refresh BetterBibTeX detection in the background; re-renders if it changes.
 		void this.refreshBbtDetection();
+		// Refresh the optional-field candidate list in the background. The
+		// suggestion popover reads it lazily, so no re-render is needed.
+		void this.refreshBibFieldNames();
 
 		const settings = this.plugin.settings;
 		const paths = settings.jsonPaths;
 		const names = settings.jsonNames;
 
+		// Guard against pre-migration data (a newline-separated string) so the
+		// whole tab still renders if getSettingDefinitions() runs first.
+		if (!Array.isArray(settings.optionalFields)) {
+			settings.optionalFields =
+				typeof settings.optionalFields === "string"
+					? (settings.optionalFields as string)
+							.split("\n")
+							.map((f) => f.trim())
+							.filter(Boolean)
+					: [];
+		}
+
 		const optionalFields = settings.optionalFields
-			.split("\n")
 			.map((f) => f.trim())
 			.filter(Boolean);
 		const baseSet = new Set<string>(BASE_PROPERTIES);
@@ -165,8 +184,17 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 							},
 							{
 								name: "Optional fields",
-								desc: "Extra fields to copy from the bibliography JSON. One per line, top level only.",
-								render: (setting: Setting) => this.renderOptionalFields(setting),
+								desc: this.optionalFieldsDesc(),
+							},
+							...settings.optionalFields.map((field, index) => ({
+								name: field || "Optional field",
+								render: (setting: Setting) =>
+									this.renderOptionalFieldRow(setting, index),
+							})),
+							{
+								name: "Add optional field",
+								render: (setting: Setting) =>
+									this.renderAddOptionalField(setting),
 							},
 						],
 					},
@@ -627,29 +655,118 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		void validate();
 	}
 
-	private renderOptionalFields(setting: Setting): void {
-		setting.setName("Optional fields");
-		setting.setDesc(
-			"Extra fields to copy from the bibliography JSON. One per line, top level only."
-		);
-		let lastValue = this.plugin.settings.optionalFields;
-		setting.addTextArea((textArea) => {
-			textArea
-				.setPlaceholder("key\npdf")
-				.setValue(this.plugin.settings.optionalFields)
-				.onChange(async (value) => {
-					this.plugin.settings.optionalFields = value;
-					await this.plugin.saveSettings();
-				});
-			// Custom merge-strategy rows derive from this value. Rebuild them
-			// when editing finishes rather than on every keystroke.
-			textArea.inputEl.addEventListener("blur", () => {
-				if (this.plugin.settings.optionalFields !== lastValue) {
-					lastValue = this.plugin.settings.optionalFields;
-					this.update();
-				}
+	private optionalFieldsDesc(): DocumentFragment {
+		return createFragment((frag) => {
+			frag.appendText(
+				"Extra top-level fields to copy from the bibliography JSON into each note's properties. " +
+					"Only text, number, and list values are copied. "
+			);
+			const link = frag.createEl("a", {
+				text: "How to add fields in Zotero",
+				href: OPTIONAL_FIELDS_HELP_URL,
 			});
+			link.setAttr("target", "_blank");
+			link.setAttr("rel", "noopener");
 		});
+	}
+
+	private renderOptionalFieldRow(setting: Setting, index: number): void {
+		const fields = this.plugin.settings.optionalFields;
+
+		setting.setName(fields[index] || "Optional field");
+		setting.settingEl.addClass("simple-citations-optional-field-row");
+
+		// A full re-render rebuilds the merge-strategy rows, which derive from
+		// this list — but it steals focus while typing, so it only runs once the
+		// field input is left with a changed value.
+		let committed = fields[index] ?? "";
+		const commitIfChanged = () => {
+			if ((fields[index] ?? "") !== committed) {
+				committed = fields[index] ?? "";
+				this.update();
+			}
+		};
+
+		setting.addText((text) => {
+			text
+				.setPlaceholder("Field name from the bibliography JSON")
+				.setValue(fields[index] ?? "")
+				.onChange(async (value) => {
+					fields[index] = value.trim();
+					await this.plugin.saveSettings();
+					setting.setName(fields[index] || "Optional field");
+				});
+			text.inputEl.addEventListener("blur", () => commitIfChanged());
+			new BibFieldSuggest(this.app, text.inputEl, () =>
+				this.optionalFieldCandidates(index)
+			);
+		});
+
+		setting.addExtraButton((button) =>
+			button
+				.setIcon("trash-2")
+				.setTooltip("Remove")
+				.onClick(() => {
+					fields.splice(index, 1);
+					void this.plugin.saveSettings().then(() => this.update());
+				})
+		);
+	}
+
+	private renderAddOptionalField(setting: Setting): void {
+		setting.setName("Add optional field");
+		setting.addButton((button) =>
+			button
+				.setButtonText("Add field")
+				.setCta()
+				.onClick(() => {
+					this.plugin.settings.optionalFields.push("");
+					void this.plugin.saveSettings().then(() => this.update());
+				})
+		);
+	}
+
+	/**
+	 * Top-level field names found in the configured bibliography files, minus
+	 * internal bookkeeping keys and fields already chosen in another row.
+	 */
+	private optionalFieldCandidates(currentIndex: number): string[] {
+		const chosen = new Set(
+			this.plugin.settings.optionalFields.filter((_, i) => i !== currentIndex)
+		);
+		return this.bibFieldNames.filter((name) => !chosen.has(name));
+	}
+
+	private async refreshBibFieldNames(): Promise<void> {
+		const signature = this.plugin.settings.jsonPaths
+			.map((path) => {
+				if (!path) return "";
+				const file = this.app.vault.getFileByPath(normalizePath(path));
+				return file ? `${file.path}@${file.stat.mtime}` : "missing";
+			})
+			.join(" ");
+		if (signature === this.bibFieldSignature) return;
+		this.bibFieldSignature = signature;
+
+		try {
+			const { mergedData } = await loadBibliographyData(
+				this.app,
+				this.plugin.settings.jsonPaths,
+				this.plugin.settings.jsonNames
+			);
+			const names = new Set<string>();
+			for (const entry of mergedData) {
+				for (const key of Object.keys(entry)) {
+					// Skip the plugin's internal bookkeeping keys (_bbt,
+					// _source_files, _duplicates, …).
+					if (!key.startsWith("_")) names.add(key);
+				}
+			}
+			this.bibFieldNames = [...names].sort((a, b) => a.localeCompare(b));
+		} catch {
+			// Leave the previous list in place and retry on the next render.
+			this.bibFieldSignature = null;
+		}
 	}
 
 	private renderMergeStrategy(setting: Setting, prop: string): void {

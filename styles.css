@@ -50,3 +50,24 @@ body.is-mobile .simple-citations-merge-list .setting-item > .setting-item-contro
 .is-mobile .simple-citations-merge-list .setting-item > .setting-item-control select {
 	width: 120px;
 }
+
+/* ── Settings: optional fields ── */
+
+.simple-citations-optional-field-row {
+	padding-top: 6px;
+	padding-bottom: 6px;
+}
+
+.simple-citations-optional-field-row > .setting-item-info {
+	flex: 0 1 auto;
+	margin-right: 0;
+}
+
+.simple-citations-optional-field-row > .setting-item-control {
+	flex: 1 1 auto;
+	justify-content: flex-start;
+}
+
+.simple-citations-optional-field-row > .setting-item-control input[type="text"] {
+	flex: 1 1 auto;
+}

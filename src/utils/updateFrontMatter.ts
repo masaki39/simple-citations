@@ -187,8 +187,8 @@ export async function updateFrontMatter(
 		}
 
 		// add optional fields from priority entry
-		const optionalFields = settings.optionalFields
-			? settings.optionalFields.split("\n").map(f => f.trim()).filter(Boolean)
+		const optionalFields = Array.isArray(settings.optionalFields)
+			? settings.optionalFields.map(f => f.trim()).filter(Boolean)
 			: [];
 		for (const field of optionalFields) {
 			if (item[field] !== undefined) {

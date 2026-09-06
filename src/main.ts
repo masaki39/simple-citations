@@ -247,6 +247,24 @@ export default class SimpleCitations extends Plugin {
 			this.settings.jsonUpdatedTimes = {};
 		}
 
+		// Migrate optionalFields from a newline-separated string to a string array
+		if (data && typeof data.optionalFields === 'string') {
+			this.settings.optionalFields = data.optionalFields
+				.split('\n')
+				.map((f: string) => f.trim())
+				.filter(Boolean);
+			needsSave = true;
+		}
+
+		// Ensure optionalFields is always an array of trimmed, non-empty strings
+		if (!Array.isArray(this.settings.optionalFields)) {
+			this.settings.optionalFields = [];
+		} else {
+			this.settings.optionalFields = this.settings.optionalFields
+				.map((f) => (typeof f === 'string' ? f.trim() : ''))
+				.filter(Boolean);
+		}
+
 		// Migrate from old pandocOutputPath to exportFolderPath (now shared with Poppler)
 		if (data && 'pandocOutputPath' in data && typeof data.pandocOutputPath === 'string') {
 			if (!this.settings.exportFolderPath) {

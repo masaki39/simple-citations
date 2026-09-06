@@ -1,5 +1,40 @@
 import { AbstractInputSuggest, App, TAbstractFile, TFile, TFolder } from "obsidian";
 
+/**
+ * Suggests top-level field names discovered in the configured bibliography
+ * JSON files. `getNames` returns the current candidate list (already filtered
+ * of fields the user has selected elsewhere); the popover filters it by the
+ * text typed so far.
+ */
+export class BibFieldSuggest extends AbstractInputSuggest<string> {
+	private textInputEl: HTMLInputElement;
+	private getNames: () => string[];
+
+	constructor(app: App, inputEl: HTMLInputElement, getNames: () => string[]) {
+		super(app, inputEl);
+		this.textInputEl = inputEl;
+		this.getNames = getNames;
+	}
+
+	getSuggestions(inputStr: string): string[] {
+		const lowerInput = inputStr.toLowerCase();
+		return this.getNames().filter((name) =>
+			name.toLowerCase().includes(lowerInput)
+		);
+	}
+
+	renderSuggestion(name: string, el: HTMLElement): void {
+		el.setText(name);
+	}
+
+	selectSuggestion(name: string): void {
+		this.setValue(name);
+		this.textInputEl.dispatchEvent(new Event("input"));
+		this.close();
+		this.textInputEl.blur();
+	}
+}
+
 export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 	private textInputEl: HTMLInputElement;
 

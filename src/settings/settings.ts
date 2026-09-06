@@ -6,9 +6,10 @@ export interface SimpleCitationsSettings {
 	includeJournalTag: boolean;
 	includeBibliography: boolean;
 
-	optionalFields: string;
+	optionalFields: string[];
 	includeAbstract: boolean;
 	templatePath: string;
+	templateSample: string;
 	autoAddCitations: boolean;
 	autoSyncCitations: boolean;
 	autoUpdateCitations: boolean;
@@ -35,9 +36,10 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	includeJournalTag: false,
 	includeBibliography: false,
 
-	optionalFields: "",
+	optionalFields: [],
 	includeAbstract: false,
 	templatePath: "",
+	templateSample: "",
 	autoAddCitations: false,
 	autoSyncCitations: false,
 	autoUpdateCitations: false,
