@@ -9,6 +9,7 @@ import { convertToPandocFormat } from './utils/convertToPandocFormat';
 import { loadBibliographyData, isBetterBibTeXFormat } from './utils/loadBibliographyData';
 import { checkRequiredFiles } from './utils/checkRequiredFiles';
 import { registerPdfCommands } from './commands/pdfCommands';
+import { registerSetCslStyleCommand } from './commands/setCslStyle';
 
 export default class SimpleCitations extends Plugin {
 	settings: SimpleCitationsSettings;
@@ -27,6 +28,7 @@ export default class SimpleCitations extends Plugin {
 		this.updateCitations.registerCommands(this);
 		this.syncCitations.registerCommands(this);
 		registerPdfCommands(this, this.app, () => this.settings);
+		registerSetCslStyleCommand(this, this.app);
 
 		if (Platform.isDesktop) this.addCommand({
 			id: 'execute-pandoc',

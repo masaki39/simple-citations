@@ -70,6 +70,7 @@ command: `Pandoc Citeproc Execution (docx)`
 - Optionally, set csl file path or url in the properties named `csl`.
 - CSL file is the file that defines the citation style of the journal.
 - You can download or get url of the csl file from [here](https://www.zotero.org/styles).
+- Or run the command `Set citation style (csl property)` to search the Zotero style repository and write the selected style URL to the `csl` property of the active note automatically.
 
 The result file(docx) is as follows:
 
@@ -94,6 +95,8 @@ The result file(docx) is as follows:
     - `Update literature note`
     - `Update literature note (active file)`
     - `Pandoc Citeproc Execution (docx)`
+    - `Set citation style (csl property)`
+      - Search the [Zotero style repository](https://www.zotero.org/styles) with a fuzzy finder and write the selected style URL to the `csl` property of the active note.
     - `Conver to Pandoc format`
     - `Copy missing note links`
       - This command identifies and copies links to literature notes that are not included in the JSON file.
