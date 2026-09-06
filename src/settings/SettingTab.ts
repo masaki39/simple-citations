@@ -1,10 +1,13 @@
 import {
 	App,
+	ButtonComponent,
+	ExtraButtonComponent,
 	Notice,
 	Platform,
 	PluginSettingTab,
 	Setting,
 	SettingDefinitionItem,
+	TextComponent,
 	normalizePath,
 } from "obsidian";
 import SimpleCitations from "../main";
@@ -185,16 +188,8 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 							{
 								name: "Optional fields",
 								desc: this.optionalFieldsDesc(),
-							},
-							...settings.optionalFields.map((field, index) => ({
-								name: field || "Optional field",
 								render: (setting: Setting) =>
-									this.renderOptionalFieldRow(setting, index),
-							})),
-							{
-								name: "Add optional field",
-								render: (setting: Setting) =>
-									this.renderAddOptionalField(setting),
+									this.renderOptionalFields(setting),
 							},
 						],
 					},
@@ -670,60 +665,71 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		});
 	}
 
-	private renderOptionalFieldRow(setting: Setting, index: number): void {
+	/**
+	 * Renders the whole optional-fields editor inside one setting row: a fixed
+	 * "Optional fields" label and description, then a vertical list of field
+	 * inputs and an "Add field" button in the control area. Keeping it in a
+	 * single row (rather than one setting per field) keeps the layout stable —
+	 * no shifting row names, no per-row alignment drift.
+	 */
+	private renderOptionalFields(setting: Setting): void {
+		setting.setName("Optional fields");
+		setting.setDesc(this.optionalFieldsDesc());
+		setting.settingEl.addClass("simple-citations-optional-fields");
+
 		const fields = this.plugin.settings.optionalFields;
 
-		setting.setName(fields[index] || "Optional field");
-		setting.settingEl.addClass("simple-citations-optional-field-row");
-
 		// A full re-render rebuilds the merge-strategy rows, which derive from
-		// this list — but it steals focus while typing, so it only runs once the
-		// field input is left with a changed value.
-		let committed = fields[index] ?? "";
-		const commitIfChanged = () => {
-			if ((fields[index] ?? "") !== committed) {
-				committed = fields[index] ?? "";
+		// the trimmed field names. It steals focus, so it only runs when the set
+		// of names actually changes (add, delete, or a committed edit).
+		let committed = fields.map((f) => f.trim()).join("\n");
+		const rerenderIfNamesChanged = () => {
+			const next = fields.map((f) => f.trim()).join("\n");
+			if (next !== committed) {
+				committed = next;
 				this.update();
 			}
 		};
 
-		setting.addText((text) => {
+		const listEl = setting.controlEl.createDiv({
+			cls: "simple-citations-optional-fields-list",
+		});
+
+		fields.forEach((field, index) => {
+			const rowEl = listEl.createDiv({
+				cls: "simple-citations-optional-fields-row",
+			});
+
+			const text = new TextComponent(rowEl);
 			text
-				.setPlaceholder("Field name from the bibliography JSON")
-				.setValue(fields[index] ?? "")
+				.setPlaceholder("Field name")
+				.setValue(field)
 				.onChange(async (value) => {
 					fields[index] = value.trim();
 					await this.plugin.saveSettings();
-					setting.setName(fields[index] || "Optional field");
 				});
-			text.inputEl.addEventListener("blur", () => commitIfChanged());
+			text.inputEl.addEventListener("blur", () => rerenderIfNamesChanged());
 			new BibFieldSuggest(this.app, text.inputEl, () =>
 				this.optionalFieldCandidates(index)
 			);
-		});
 
-		setting.addExtraButton((button) =>
-			button
-				.setIcon("trash-2")
+			new ExtraButtonComponent(rowEl)
+				.setIcon("x")
 				.setTooltip("Remove")
 				.onClick(() => {
 					fields.splice(index, 1);
 					void this.plugin.saveSettings().then(() => this.update());
-				})
-		);
-	}
+				});
+		});
 
-	private renderAddOptionalField(setting: Setting): void {
-		setting.setName("Add optional field");
-		setting.addButton((button) =>
-			button
-				.setButtonText("Add field")
-				.setCta()
-				.onClick(() => {
-					this.plugin.settings.optionalFields.push("");
-					void this.plugin.saveSettings().then(() => this.update());
-				})
-		);
+		new ButtonComponent(
+			listEl.createDiv({ cls: "simple-citations-optional-fields-add" })
+		)
+			.setButtonText("Add field")
+			.onClick(() => {
+				fields.push("");
+				void this.plugin.saveSettings().then(() => this.update());
+			});
 	}
 
 	/**
