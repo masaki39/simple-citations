@@ -17,10 +17,12 @@ import {
 import {
 	BinarySpec,
 	detectBinary,
+	isAbsolutePath,
 	probeBinary,
 	PANDOC_SPEC,
 	PDFIMAGES_SPEC,
 } from "../utils/binaryPath";
+import { detectDownloadsDir, directoryExists } from "../utils/downloadsDir";
 import { JsonFileSuggest, FolderSuggest } from "./FileSuggest";
 import { getStrategy, getDefaultStrategy } from "../utils/mergeStrategies";
 import { BASE_PROPERTIES } from "../utils/updateFrontMatter";
@@ -221,12 +223,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					},
 					{
 						name: "Export folder",
-						desc: "Absolute path to an export folder. Leave empty to export next to the source note.",
-						control: {
-							type: "text",
-							key: "pandocOutputPath",
-							placeholder: "Same as source note",
-						},
+						render: (setting: Setting) => this.renderExportFolder(setting),
 					},
 					{
 						name: "Extra Pandoc arguments",
@@ -346,6 +343,76 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					updateSettingFolderStatus(this.app, statusEl, value);
 				});
 		});
+	}
+
+	private renderExportFolder(setting: Setting): void {
+		setting.setName("Export folder");
+		setting.descEl.empty();
+		setting.descEl.appendText(
+			"Absolute path to an export folder. Leave empty to export next to the source note. Select "
+		);
+		setting.descEl.createEl("strong", { text: "Detect" });
+		setting.descEl.appendText(" to use your Downloads folder.");
+
+		const statusEl = createSpan();
+		const refreshStatus = () => {
+			try {
+				const value = this.plugin.settings.pandocOutputPath;
+				if (!value) {
+					statusEl.empty();
+					return;
+				}
+				setStatusIcon(statusEl, isAbsolutePath(value) && directoryExists(value));
+			} catch {
+				/* status is cosmetic */
+			}
+		};
+
+		setting.addText((text) => {
+			setting.controlEl.insertBefore(statusEl, text.inputEl);
+			text
+				.setPlaceholder("Same as source note")
+				.setValue(this.plugin.settings.pandocOutputPath)
+				.onChange(async (value) => {
+					this.plugin.settings.pandocOutputPath = value.trim();
+					await this.plugin.saveSettings();
+					refreshStatus();
+				});
+
+			if (Platform.isDesktop) {
+				setting.addButton((button) => {
+					button
+						.setButtonText("Detect")
+						.setTooltip("Find your Downloads folder")
+						.onClick(async () => {
+							button.setDisabled(true);
+							try {
+								const result = detectDownloadsDir();
+								console.warn(
+									"[simple-citations] detect Downloads folder:\n" +
+										result.diagnostics.join("\n")
+								);
+								if (result.path) {
+									this.plugin.settings.pandocOutputPath = result.path;
+									await this.plugin.saveSettings();
+									text.setValue(result.path);
+									refreshStatus();
+									new Notice(`Export folder set to ${result.path}`);
+								} else {
+									new Notice(
+										"Could not find your Downloads folder. Enter an absolute path, " +
+											"or open the developer console (Ctrl/Cmd+Shift+I) for details."
+									);
+								}
+							} finally {
+								button.setDisabled(false);
+							}
+						});
+				});
+			}
+		});
+
+		refreshStatus();
 	}
 
 	private renderTemplatePath(setting: Setting): void {
