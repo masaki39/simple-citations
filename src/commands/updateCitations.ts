@@ -179,7 +179,5 @@ export class UpdateCitations {
 			templateContent,
 			this.settings.includeAbstract ? matchingEntry['abstract'] ?? '' : ""
 		);
-
-		console.log(`Auto update citations completed for: ${file.name}`);
 	}
 }

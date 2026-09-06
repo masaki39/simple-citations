@@ -87,7 +87,7 @@ export default class SimpleCitations extends Plugin {
 
 				// execute pandoc
 				try {
-					const { spawn } = require('child_process') as typeof import('child_process');
+					const { spawn } = await import('child_process');
 					const pandocProcess = spawn(PandocPath,
 						[PandocInputFile, "-o", PandocOutputFile, ...PandocArgs],
 						{env: process.env});

@@ -87,6 +87,5 @@ export class AddCitations {
 			this.settings.jsonUpdatedTimes[jsonFile.path] = new Date(jsonFile.stat.mtime).getTime();
 		}
 		await this.saveSettings();
-		console.log("Add literature notes completed.");
 	}
 }

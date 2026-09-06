@@ -129,7 +129,7 @@ export async function loadBibliographyData(
 		}
 
 		for (const entry of entries) {
-			const key = entry?.['citation-key'] as string | undefined;
+			const key = entry?.['citation-key'];
 			if (!key) continue;
 
 			const existing = seenKeys.get(key);

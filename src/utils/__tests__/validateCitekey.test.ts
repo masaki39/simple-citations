@@ -4,7 +4,7 @@ describe('validateCitekey', () => {
 	let consoleSpy: jest.SpyInstance;
 
 	beforeEach(() => {
-		consoleSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+		consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
 	afterEach(() => {

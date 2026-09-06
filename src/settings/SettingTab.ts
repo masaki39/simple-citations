@@ -199,7 +199,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				const container = text.inputEl.parentElement;
 				let statusSpan: HTMLElement | null = null;
 				if (container) {
-					statusSpan = container.insertBefore(activeDocument.createElement('span'), text.inputEl);
+					statusSpan = container.insertBefore(createSpan(), text.inputEl);
 
 					updateSettingFolderStatus(this.app, statusSpan, this.plugin.settings.folderPath);
 				}
@@ -337,7 +337,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				const container = text.inputEl.parentElement;
 				let statusSpan: HTMLElement | null = null;
 				if (container) {
-					statusSpan = container.insertBefore(activeDocument.createElement('span'), text.inputEl);
+					statusSpan = container.insertBefore(createSpan(), text.inputEl);
 
 					updateSettingTemplateStatus(this.app, statusSpan, this.plugin.settings.templatePath);
 				}
@@ -360,12 +360,10 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		}
 		new Setting(containerEl)
 			.setName('Pandoc path')
-			.setDesc((() => {
-				const f = activeDocument.createDocumentFragment();
+			.setDesc(createFragment(f => {
 				f.createEl('a', { text: 'Pandoc', href: 'https://pandoc.org' });
 				f.appendText(' must be installed. Mac/Linux: `which pandoc`, Windows: `where pandoc`.');
-				return f;
-			})())
+			}))
 			.addText(text => text
 				.setPlaceholder('pandoc')
 				.setValue(this.plugin.settings.inputPandocPath)
@@ -405,12 +403,10 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		}
 		new Setting(containerEl)
 			.setName('pdfimages path')
-			.setDesc((() => {
-				const f = activeDocument.createDocumentFragment();
+			.setDesc(createFragment(f => {
 				f.createEl('a', { text: 'Poppler', href: 'https://poppler.freedesktop.org' });
 				f.appendText(' must be installed. Mac/Linux: `which pdfimages`, Windows: `where pdfimages`.');
-				return f;
-			})())
+			}))
 			.addText(text => text
 				.setPlaceholder('pdfimages')
 				.setValue(this.plugin.settings.pdfimagesPath)

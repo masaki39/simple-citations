@@ -46,7 +46,8 @@ export class SyncCitations {
 						.onClick(() => modal.close()))
 					.addButton(btn => btn
 						.setButtonText('Full sync')
-						.setWarning()
+						.setDestructive()
+						.setCta()
 						.onClick(async () => {
 							modal.close();
 							await this.addCitations.runAddCitations();

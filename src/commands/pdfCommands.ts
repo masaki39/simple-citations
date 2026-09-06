@@ -31,10 +31,10 @@ export function registerPdfCommands(
 			const pdfPaths = resolvePdfPaths(app, view);
 			if (!pdfPaths) return;
 			try {
-				const { copyFile } = require('fs/promises') as typeof import('fs/promises');
-				const { basename, join } = require('path') as typeof import('path');
+				const fs = await import('fs/promises');
+				const path = await import('path');
 				for (const src of pdfPaths) {
-					await copyFile(src, join(settings.pandocOutputPath, basename(src)));
+					await fs.copyFile(src, path.join(settings.pandocOutputPath, path.basename(src)));
 				}
 				new Notice('PDF export completed.');
 			} catch (error) {
@@ -56,10 +56,10 @@ export function registerPdfCommands(
 			if (!pdfPaths) return;
 			const pdfimagesPath = settings.pdfimagesPath || 'pdfimages';
 			try {
-				const { spawn } = require('child_process') as typeof import('child_process');
-				const { join } = require('path') as typeof import('path');
+				const { spawn } = await import('child_process');
+				const path = await import('path');
 				for (let i = 0; i < pdfPaths.length; i++) {
-					const prefix = join(settings.pandocOutputPath, `pdf${i + 1}`);
+					const prefix = path.join(settings.pandocOutputPath, `pdf${i + 1}`);
 					await new Promise<void>((resolve, reject) => {
 						const proc = spawn(pdfimagesPath, ['-png', pdfPaths[i], prefix], { env: process.env });
 						proc.on('close', (code) => {

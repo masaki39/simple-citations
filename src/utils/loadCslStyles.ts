@@ -9,6 +9,14 @@ export interface CslStyle {
 	href: string;
 }
 
+type RawStyleEntry = { title: string; name: string } & Record<string, unknown>;
+
+function isStyleEntry(entry: unknown): entry is RawStyleEntry {
+	if (!entry || typeof entry !== 'object') return false;
+	const record = entry as Record<string, unknown>;
+	return typeof record.name === 'string' && typeof record.title === 'string';
+}
+
 let cache: CslStyle[] | null = null;
 
 /**
@@ -25,18 +33,14 @@ export async function loadCslStyles(forceRefresh = false): Promise<CslStyle[]> {
 	}
 
 	const styles = data
-		.filter((entry): entry is Record<string, unknown> =>
-			!!entry && typeof entry === 'object' &&
-			typeof (entry as Record<string, unknown>).name === 'string' &&
-			typeof (entry as Record<string, unknown>).title === 'string'
-		)
+		.filter(isStyleEntry)
 		.map((entry) => ({
-			title: entry.title as string,
+			title: entry.title,
 			titleShort: typeof entry.titleShort === 'string' ? entry.titleShort : undefined,
-			name: entry.name as string,
+			name: entry.name,
 			href: typeof entry.href === 'string'
-				? (entry.href as string)
-				: `https://www.zotero.org/styles/${entry.name as string}`,
+				? entry.href
+				: `https://www.zotero.org/styles/${entry.name}`,
 		}));
 
 	cache = styles;
