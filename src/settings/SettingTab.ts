@@ -1,13 +1,10 @@
 import {
 	App,
-	ButtonComponent,
-	ExtraButtonComponent,
 	Notice,
 	Platform,
 	PluginSettingTab,
 	Setting,
 	SettingDefinitionItem,
-	TextComponent,
 	normalizePath,
 } from "obsidian";
 import SimpleCitations from "../main";
@@ -185,13 +182,40 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 								visible: () => this.hasBbtFiles,
 								control: { type: "toggle", key: "includeBbtCollections" },
 							},
-							{
-								name: "Optional fields",
-								desc: this.optionalFieldsDesc(),
-								render: (setting: Setting) =>
-									this.renderOptionalFields(setting),
-							},
 						],
+					},
+					{
+						type: "list",
+						heading: "Optional fields",
+						emptyState: this.optionalFieldsDesc(
+							"No optional fields yet. Add a top-level field from the bibliography JSON to copy it into each note's properties. "
+						),
+						addItem: {
+							name: "Add optional field",
+							action: () => {
+								settings.optionalFields.push("");
+								void this.plugin.saveSettings().then(() => this.update());
+							},
+						},
+						onReorder: (oldIndex, newIndex) => {
+							moveItem(settings.optionalFields, oldIndex, newIndex);
+							void this.plugin.saveSettings().then(() => this.update());
+						},
+						onDelete: (index) => {
+							settings.optionalFields.splice(index, 1);
+							void this.plugin.saveSettings().then(() => this.update());
+						},
+						items: settings.optionalFields.map((field, index) => ({
+							name: field || "(empty)",
+							desc:
+								index === 0
+									? this.optionalFieldsDesc(
+											"Only text, number, and list values are copied. Top level only. "
+										)
+									: undefined,
+							render: (setting: Setting) =>
+								this.renderOptionalFieldRow(setting, index),
+						})),
 					},
 					{
 						type: "group",
@@ -650,12 +674,9 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		void validate();
 	}
 
-	private optionalFieldsDesc(): DocumentFragment {
+	private optionalFieldsDesc(lead: string): DocumentFragment {
 		return createFragment((frag) => {
-			frag.appendText(
-				"Extra top-level fields to copy from the bibliography JSON into each note's properties. " +
-					"Only text, number, and list values are copied. "
-			);
+			frag.appendText(lead);
 			const link = frag.createEl("a", {
 				text: "How to add fields in Zotero",
 				href: OPTIONAL_FIELDS_HELP_URL,
@@ -665,71 +686,35 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		});
 	}
 
-	/**
-	 * Renders the whole optional-fields editor inside one setting row: a fixed
-	 * "Optional fields" label and description, then a vertical list of field
-	 * inputs and an "Add field" button in the control area. Keeping it in a
-	 * single row (rather than one setting per field) keeps the layout stable —
-	 * no shifting row names, no per-row alignment drift.
-	 */
-	private renderOptionalFields(setting: Setting): void {
-		setting.setName("Optional fields");
-		setting.setDesc(this.optionalFieldsDesc());
-		setting.settingEl.addClass("simple-citations-optional-fields");
-
+	private renderOptionalFieldRow(setting: Setting, index: number): void {
 		const fields = this.plugin.settings.optionalFields;
 
-		// A full re-render rebuilds the merge-strategy rows, which derive from
-		// the trimmed field names. It steals focus, so it only runs when the set
-		// of names actually changes (add, delete, or a committed edit).
-		let committed = fields.map((f) => f.trim()).join("\n");
-		const rerenderIfNamesChanged = () => {
-			const next = fields.map((f) => f.trim()).join("\n");
-			if (next !== committed) {
-				committed = next;
+		// The list provides the drag handle and delete button; this row only
+		// owns the field-name input. The row name (and the merge-strategy rows
+		// that derive from these names) refresh on a full re-render, which would
+		// steal focus while typing — so it only runs once the input is left with
+		// a changed value.
+		let committed = fields[index] ?? "";
+		const commitIfChanged = () => {
+			if ((fields[index] ?? "") !== committed) {
+				committed = fields[index] ?? "";
 				this.update();
 			}
 		};
 
-		const listEl = setting.controlEl.createDiv({
-			cls: "simple-citations-optional-fields-list",
-		});
-
-		fields.forEach((field, index) => {
-			const rowEl = listEl.createDiv({
-				cls: "simple-citations-optional-fields-row",
-			});
-
-			const text = new TextComponent(rowEl);
+		setting.addText((text) => {
 			text
 				.setPlaceholder("Field name")
-				.setValue(field)
+				.setValue(fields[index] ?? "")
 				.onChange(async (value) => {
 					fields[index] = value.trim();
 					await this.plugin.saveSettings();
 				});
-			text.inputEl.addEventListener("blur", () => rerenderIfNamesChanged());
+			text.inputEl.addEventListener("blur", () => commitIfChanged());
 			new BibFieldSuggest(this.app, text.inputEl, () =>
 				this.optionalFieldCandidates(index)
 			);
-
-			new ExtraButtonComponent(rowEl)
-				.setIcon("x")
-				.setTooltip("Remove")
-				.onClick(() => {
-					fields.splice(index, 1);
-					void this.plugin.saveSettings().then(() => this.update());
-				});
 		});
-
-		new ButtonComponent(
-			listEl.createDiv({ cls: "simple-citations-optional-fields-add" })
-		)
-			.setButtonText("Add field")
-			.onClick(() => {
-				fields.push("");
-				void this.plugin.saveSettings().then(() => this.update());
-			});
 	}
 
 	/**
