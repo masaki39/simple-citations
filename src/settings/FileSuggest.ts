@@ -25,6 +25,7 @@ export class FolderSuggest extends AbstractInputSuggest<TFolder> {
 		this.setValue(folder.path);
 		this.textInputEl.dispatchEvent(new Event("input"));
 		this.close();
+		this.textInputEl.blur();
 	}
 }
 
@@ -58,5 +59,6 @@ export class JsonFileSuggest extends AbstractInputSuggest<TFile> {
 		this.setValue(file.path);
 		this.textInputEl.dispatchEvent(new Event("input"));
 		this.close();
+		this.textInputEl.blur();
 	}
 }

@@ -269,27 +269,39 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		const paths = this.plugin.settings.jsonPaths;
 		const names = this.plugin.settings.jsonNames;
 
-		setting.setName(this.displayName(index) || "(unnamed)");
 		setting.setDesc(
 			"Earlier entries have higher priority when the same citation key exists in multiple files."
 		);
-		const statusEl = createSpan();
-		updateSettingJsonStatus(this.app, statusEl, paths[index] ?? "");
-		setting.nameEl.prepend(statusEl);
 
-		const defaultName = (paths[index] ?? "").split("/").pop()?.replace(/\.json$/, "") || "";
+		const refreshName = () => {
+			setting.nameEl.empty();
+			const statusEl = setting.nameEl.createSpan();
+			updateSettingJsonStatus(this.app, statusEl, paths[index] ?? "");
+			setting.nameEl.createSpan({ text: this.displayName(index) || "(unnamed)" });
+		};
+		refreshName();
 
-		setting.addText((text) =>
+		// A full re-render corrects the row name, the merge-strategies group's
+		// visibility, and BetterBibTeX detection — but would steal focus while
+		// typing, so it only runs once the field is left with a changed value.
+		let committedPath = paths[index] ?? "";
+		const commitIfChanged = () => {
+			if ((paths[index] ?? "") !== committedPath) {
+				committedPath = paths[index] ?? "";
+				this.update();
+			}
+		};
+
+		setting.addText((text) => {
 			text
-				.setPlaceholder(
-					defaultName ? `Display name (default: ${defaultName})` : "Display name"
-				)
+				.setPlaceholder("Display name (defaults to the file name)")
 				.setValue(names[index] ?? "")
 				.onChange(async (value) => {
 					names[index] = value;
 					await this.plugin.saveSettings();
-				})
-		);
+					refreshName();
+				});
+		});
 
 		setting.addText((text) => {
 			text
@@ -304,8 +316,9 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					}
 					paths[index] = value;
 					await this.plugin.saveSettings();
-					updateSettingJsonStatus(this.app, statusEl, value);
+					refreshName();
 				});
+			text.inputEl.addEventListener("blur", () => commitIfChanged());
 			new JsonFileSuggest(this.app, text.inputEl, () =>
 				paths.filter((_, i) => i !== index)
 			);
