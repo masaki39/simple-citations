@@ -45,9 +45,9 @@ export class UpdateCitations {
 		let fileCount: number = 0;
 
 		// progress notice
-		let notice = new Notice(`0 file(s) updated.`, 0);
+		let notice = new Notice(`Updated 0 file(s).`, 0);
 		const intervalId = window.setInterval(() => {
-			notice.setMessage(`${fileCount} file(s) updated.`);
+			notice.setMessage(`Updated ${fileCount} file(s).`);
 		}, 200);
 
 		// check json file
@@ -74,7 +74,7 @@ export class UpdateCitations {
 		window.clearInterval(intervalId);
 		const endTime = performance.now();
 		const elapsedTime = ((endTime - startTime) / 1000).toFixed(1);
-		notice.setMessage(`${fileCount} file(s) updated.\nTime taken: ${elapsedTime} seconds`);
+		notice.setMessage(`Updated ${fileCount} file(s).\nTime taken: ${elapsedTime} seconds`);
 		window.setTimeout(() => {
 			notice.hide();
 		}, 3000);

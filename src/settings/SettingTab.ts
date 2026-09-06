@@ -288,7 +288,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 									this.renderBinaryPath(setting, "inputPandocPath", PANDOC_SPEC, {
 										toolName: "Pandoc",
 										toolUrl: "https://pandoc.org",
-										usedBy: "Pandoc Citeproc Execution (docx)",
+										usedBy: "Pandoc citeproc execution (docx)",
 									}),
 							},
 							{
@@ -595,7 +595,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					statusEl.setText("…");
 				} else if (state === "auto") {
 					setStatusIcon(statusEl, true);
-					hintEl.setText("Auto-detected on PATH — no path needed.");
+					hintEl.setText("Found automatically — no path needed.");
 				} else if (state === "ok") {
 					setStatusIcon(statusEl, true);
 				} else if (state === "missing") {
