@@ -195,20 +195,25 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 						],
 					},
 					{
-						// Section title + persistent description for the list
-						// below. A list's own heading carries no description, and
-						// a description-only row is dropped by the renderer, so
-						// this titled row stands in as the list's header.
-						name: "Optional fields",
-						desc: this.optionalFieldsDesc(
-							"Extra top-level fields to copy from the bibliography JSON into each note's properties. " +
+						type: "list",
+						heading: "Optional fields",
+						// A list carries no description slot; the full
+						// explanation lives in the empty state and behind the
+						// help icon (Obsidian's own list settings do the same).
+						extraButtons: [
+							(button) =>
+								button
+									.setIcon("help")
+									.setTooltip("How to add fields in Zotero")
+									.onClick(() =>
+										window.open(OPTIONAL_FIELDS_HELP_URL, "_blank")
+									),
+						],
+						emptyState: this.optionalFieldsDesc(
+							"No optional fields yet. Add a top-level field from the bibliography JSON " +
+								"(e.g. one added via a BetterBibTeX postscript) to copy it into each note. " +
 								"Only text, number, and list values are copied. "
 						),
-					},
-					{
-						type: "list",
-						emptyState:
-							"No optional fields added yet. Use the + button to add one.",
 						addItem: {
 							name: "Add optional field",
 							action: () => {
