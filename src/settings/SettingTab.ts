@@ -38,7 +38,7 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		await this.plugin.saveSettings();
 		// Toggling this shows/hides the base-property rows.
 		if (key === "showBaseProperties") {
-			this.refreshDomState();
+			this.update();
 		}
 	}
 
@@ -159,7 +159,8 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 				visible: () => this.plugin.settings.jsonPaths.filter((p) => p).length > 1,
 				items: [
 					{
-						name: "When the same citation key appears in multiple bibliography files, choose how each property is combined.",
+						name: "Duplicate handling",
+						desc: "When the same citation key appears in multiple bibliography files, choose how each property is combined.",
 					} as SettingDefinitionEmpty,
 					...customMergeProperties.map((prop) => ({
 						name: prop,
@@ -268,6 +269,10 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 		const paths = this.plugin.settings.jsonPaths;
 		const names = this.plugin.settings.jsonNames;
 
+		setting.setName(this.displayName(index) || "(unnamed)");
+		setting.setDesc(
+			"Earlier entries have higher priority when the same citation key exists in multiple files."
+		);
 		const statusEl = createSpan();
 		updateSettingJsonStatus(this.app, statusEl, paths[index] ?? "");
 		setting.nameEl.prepend(statusEl);
@@ -308,6 +313,8 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 	}
 
 	private renderFolderPath(setting: Setting): void {
+		setting.setName("Literature note folder");
+		setting.setDesc("Folder to save literature notes. Default: vault root.");
 		setting.addText((text) => {
 			const statusEl = createSpan();
 			updateSettingFolderStatus(this.app, statusEl, this.plugin.settings.folderPath);
@@ -325,6 +332,10 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 	}
 
 	private renderTemplatePath(setting: Setting): void {
+		setting.setName("Template file");
+		setting.setDesc(
+			"When set, add this template to the top of each literature note. Intended for dynamic templates such as Dataview."
+		);
 		setting.addText((text) => {
 			const statusEl = createSpan();
 			updateSettingTemplateStatus(this.app, statusEl, this.plugin.settings.templatePath);
@@ -341,22 +352,34 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 	}
 
 	private renderOptionalFields(setting: Setting): void {
-		setting.addTextArea((textArea) =>
+		setting.setName("Optional fields");
+		setting.setDesc(
+			"Extra fields to copy from the bibliography JSON. One per line, top level only."
+		);
+		let lastValue = this.plugin.settings.optionalFields;
+		setting.addTextArea((textArea) => {
 			textArea
 				.setPlaceholder("key\npdf")
 				.setValue(this.plugin.settings.optionalFields)
 				.onChange(async (value) => {
 					this.plugin.settings.optionalFields = value;
 					await this.plugin.saveSettings();
-					// Custom merge-strategy rows derive from this value; they are
-					// rebuilt the next time the settings tab is rendered.
-				})
-		);
+				});
+			// Custom merge-strategy rows derive from this value. Rebuild them
+			// when editing finishes rather than on every keystroke.
+			textArea.inputEl.addEventListener("blur", () => {
+				if (this.plugin.settings.optionalFields !== lastValue) {
+					lastValue = this.plugin.settings.optionalFields;
+					this.update();
+				}
+			});
+		});
 	}
 
 	private renderMergeStrategy(setting: Setting, prop: string): void {
 		const defaultStrategy = getDefaultStrategy(prop);
 		const strategies = this.plugin.settings.mergeStrategies;
+		setting.setName(prop);
 		const describe = () =>
 			setting.setDesc(strategies[prop] !== undefined ? `Default: ${defaultStrategy}` : "");
 		describe();
@@ -378,9 +401,15 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 	}
 
 	private async refreshBbtDetection(): Promise<void> {
-		// Only re-scan when the configured file list changed, so routine
-		// re-renders don't parse bibliography JSON on every keystroke.
-		const signature = this.plugin.settings.jsonPaths.join(" ");
+		// Re-scan only when the resolved files or their contents changed, so
+		// routine re-renders don't re-parse bibliography JSON needlessly.
+		const signature = this.plugin.settings.jsonPaths
+			.map((path) => {
+				if (!path) return "";
+				const file = this.app.vault.getFileByPath(normalizePath(path));
+				return file ? `${file.path}@${file.stat.mtime}` : "missing";
+			})
+			.join(" ");
 		if (signature === this.bbtSignature) return;
 		this.bbtSignature = signature;
 
