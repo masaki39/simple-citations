@@ -188,8 +188,19 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 					{
 						type: "list",
 						heading: "Optional fields",
+						extraButtons: [
+							(button) =>
+								button
+									.setIcon("help")
+									.setTooltip("How to add fields in Zotero")
+									.onClick(() =>
+										window.open(OPTIONAL_FIELDS_HELP_URL, "_blank")
+									),
+						],
 						emptyState: this.optionalFieldsDesc(
-							"No optional fields yet. Add a top-level field from the bibliography JSON to copy it into each note's properties. "
+							"No optional fields yet. Add a top-level field from the bibliography JSON " +
+								"(e.g. one added via a BetterBibTeX postscript) to copy it into each note. " +
+								"Only text, number, and list values are copied. "
 						),
 						addItem: {
 							name: "Add optional field",
@@ -204,12 +215,6 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 						},
 						items: settings.optionalFields.map((_, index) => ({
 							name: "",
-							desc:
-								index === 0
-									? this.optionalFieldsDesc(
-											"Only text, number, and list values are copied. Top level only. "
-										)
-									: undefined,
 							render: (setting: Setting) =>
 								this.renderOptionalFieldRow(setting, index),
 						})),
