@@ -108,6 +108,20 @@ pnpm run build
 - Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
 - After the initial release, follow the process to add/update your plugin in the community catalog as required.
 
+### This repo's tooling for the above
+
+- Run `pnpm version <major|minor|patch>` to bump. Its `version`/`postversion`
+  npm-lifecycle scripts (`version-bump.mjs`, `postversion.mjs`) update
+  `manifest.json`/`versions.json`, commit, and tag — do not hand-edit those
+  version fields or hand-run `git tag`.
+- **Releases are automated**: pushing a tag matching `manifest.json`'s version
+  triggers `.github/workflows/release.yml`, which builds, attests provenance,
+  and creates the GitHub release with `main.js`/`manifest.json`/`styles.css`
+  attached (using `changelog/<version>.md` as the release notes if present).
+  Do not run `gh release create` manually — just push the tag and let CI
+  create the release, or its own release-creation step will fail with
+  "a release with the same tag name already exists".
+
 ## Security, privacy, and compliance
 
 Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particular:
