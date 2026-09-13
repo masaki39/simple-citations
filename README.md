@@ -108,6 +108,8 @@ The result file(docx) is as follows:
     - `Conver to Pandoc format`
     - `Copy missing note links`
       - This command identifies and copies links to literature notes that are not included in the JSON file.
+    - `Remove properties from literature notes`
+      - Deletes one or more named YAML properties (comma-separated) from every literature note in the configured folder, with a preview of how many notes are affected before you confirm. Useful for cleaning up an old `optionalFields` entry after renaming or removing it. Properties managed by the plugin (title, authors, year, journal, doi, pdf, collections, aliases, tags, zotero, bibliography) cannot be removed this way.
     - `Export PDF` *(requires export folder to be set)*
       - Copies the PDF file(s) listed in the `pdf` frontmatter property to the export folder.
     - `Export PDF images` *(requires [Poppler](https://poppler.freedesktop.org))*
@@ -152,6 +154,9 @@ Better Bibtex for Zotero has the function to add optional fields to the bibliogr
 3. Set "postscript" as you want
 
 Reference for the script. → [Scripting :: Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/exporting/scripting/index.html)
+
+> [!tip]
+> If you rename or remove an optional field, existing notes keep the old property. Run `Remove properties from literature notes` to clean it up across the folder.
 
 #### Postscript examples
 

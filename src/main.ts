@@ -5,6 +5,7 @@ import { autoAddCitations, autoSyncCitations } from './commands/autoCitations';
 import { AddCitations } from './commands/addCitations';
 import { UpdateCitations } from './commands/updateCitations';
 import { SyncCitations } from './commands/syncCitations';
+import { RemoveFields } from './commands/removeFields';
 import { convertToPandocFormat } from './utils/convertToPandocFormat';
 import { loadBibliographyData, isBetterBibTeXFormat } from './utils/loadBibliographyData';
 import { checkRequiredFiles } from './utils/checkRequiredFiles';
@@ -18,6 +19,7 @@ export default class SimpleCitations extends Plugin {
 	private addCitations!: AddCitations;
 	private updateCitations!: UpdateCitations;
 	private syncCitations!: SyncCitations;
+	private removeFields!: RemoveFields;
 
 	async onload() {
 		await this.loadSettings();
@@ -25,10 +27,12 @@ export default class SimpleCitations extends Plugin {
 		this.addCitations = new AddCitations(this.app, this.settings, () => this.saveSettings());
 		this.updateCitations = new UpdateCitations(this.app, this.settings);
 		this.syncCitations = new SyncCitations(this.app, this.addCitations, this.updateCitations);
+		this.removeFields = new RemoveFields(this.app, this.settings);
 
 		this.addCitations.registerCommands(this);
 		this.updateCitations.registerCommands(this);
 		this.syncCitations.registerCommands(this);
+		this.removeFields.registerCommands(this);
 		registerPdfCommands(this, this.app, () => this.settings);
 		registerSetCslStyleCommand(this, this.app);
 
