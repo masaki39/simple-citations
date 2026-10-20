@@ -304,7 +304,7 @@ views:
     sort:
       - property: year
         direction: DESC
-    limit: 20
+    limit: 10
 ```
 ````
 

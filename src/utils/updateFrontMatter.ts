@@ -80,6 +80,13 @@ function extractValues(item: BibEntry): Record<string, unknown> {
 	return item['_bbt'] ? extractValuesBbt(item) : extractValuesCsl(item);
 }
 
+/** Local date as YYYY-MM-DD, the format Obsidian's date property uses. */
+function formatLocalDate(time: number): string {
+	const d = new Date(time);
+	const pad = (n: number) => String(n).padStart(2, '0');
+	return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export async function updateFrontMatter(
 	app: App,
 	settings: SimpleCitationsSettings,
@@ -87,7 +94,10 @@ export async function updateFrontMatter(
 	item: BibEntry,
 	fullSync: boolean = false
 ) {
+	const createdProperty = settings.createdProperty?.trim() ?? '';
 	await app.fileManager.processFrontMatter(targetFile, (fm) => {
+		// Keep an existing creation date so full sync doesn't reset it
+		const existingCreated: unknown = createdProperty ? fm[createdProperty] : undefined;
 		if (fullSync) {
 			for (const key of Object.keys(fm)) {
 				delete fm[key];
@@ -143,6 +153,11 @@ export async function updateFrontMatter(
 			fm.bibliography = item['_source_files'];
 		} else {
 			delete fm.bibliography;
+		}
+
+		if (createdProperty) {
+			fm[createdProperty] = existingCreated
+				?? formatLocalDate(targetFile.stat.ctime);
 		}
 
 		if (fm.authors && fm.authors.length > 0 && fm.journal && fm.year) {

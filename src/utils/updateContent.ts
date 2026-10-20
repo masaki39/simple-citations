@@ -5,7 +5,9 @@ export async function updateContent(app: App, targetFile: TFile, template: strin
     const normalizedAbstract = typeof abstract === "string" ? abstract : "";
     const trimmedAbstract = normalizedAbstract.split("\n").map(line => line.trim()).join("\n").replace(/\n{2,}/g, "\n");
     await app.vault.process(targetFile, (fileContent: string) => {
-        fileContent = replaceCommentTags(fileContent, "<!-- START_TEMPLATE -->", "<!-- END_TEMPLATE -->", template);
+        // Trailing newline leaves a blank line above END_TEMPLATE.
+        const paddedTemplate = template ? `${template.replace(/\n+$/, "")}\n` : "";
+        fileContent = replaceCommentTags(fileContent, "<!-- START_TEMPLATE -->", "<!-- END_TEMPLATE -->", paddedTemplate);
         fileContent = replaceCommentTags(fileContent, "<!-- START_ABSTRACT -->", "<!-- END_ABSTRACT -->", trimmedAbstract);
         // The abstract and template blocks are inserted after the frontmatter on
         // separate passes, which can leave two blank lines between them. Keep one.

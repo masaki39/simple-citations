@@ -195,6 +195,15 @@ export class SimpleCitationsSettingTab extends PluginSettingTab {
 								control: { type: "toggle", key: "includeBibliography" },
 							},
 							{
+								name: "Created date property",
+								desc: 'Property name to store the note\'s creation date (e.g. "date"). An existing value is kept. Leave empty to disable.',
+								control: {
+									type: "text",
+									key: "createdProperty",
+									placeholder: "Example: date",
+								},
+							},
+							{
 								name: "Include PDF paths (BetterBibTeX JSON)",
 								desc: 'Automatically add a "pdf" property with local PDF paths extracted from attachments.',
 								visible: () => this.hasBbtFiles,

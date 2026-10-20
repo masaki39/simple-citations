@@ -55,6 +55,7 @@ describe("updateContent", () => {
 			"<!-- END_ABSTRACT -->\n\n<!-- START_TEMPLATE -->"
 		);
 		expect(processed).not.toMatch(/<!-- END_ABSTRACT -->\n{3,}<!-- START_TEMPLATE -->/);
+		expect(processed).toContain("Template body\n\n<!-- END_TEMPLATE -->");
 	});
 
 	it("normalizes abstract whitespace", async () => {

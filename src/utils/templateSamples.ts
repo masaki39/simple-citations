@@ -38,7 +38,7 @@ const SAME_FIRST_AUTHOR = [
 	"    sort:",
 	"      - property: year",
 	"        direction: DESC",
-	"    limit: 20",
+	"    limit: 10",
 	"```",
 ].join("\n");
 
@@ -64,7 +64,7 @@ const SAME_JOURNAL = [
 	"    sort:",
 	"      - property: year",
 	"        direction: DESC",
-	"    limit: 20",
+	"    limit: 10",
 	"```",
 ].join("\n");
 

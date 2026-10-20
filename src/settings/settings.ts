@@ -5,6 +5,7 @@ export interface SimpleCitationsSettings {
 	includeAuthorTag: boolean;
 	includeJournalTag: boolean;
 	includeBibliography: boolean;
+	createdProperty: string;
 
 	optionalFields: string[];
 	includeAbstract: boolean;
@@ -35,6 +36,7 @@ export const DEFAULT_SETTINGS: SimpleCitationsSettings = {
 	includeAuthorTag: false,
 	includeJournalTag: false,
 	includeBibliography: false,
+	createdProperty: "",
 
 	optionalFields: [],
 	includeAbstract: false,
