@@ -155,11 +155,6 @@ export async function updateFrontMatter(
 			delete fm.bibliography;
 		}
 
-		if (createdProperty) {
-			fm[createdProperty] = existingCreated
-				?? formatLocalDate(targetFile.stat.ctime);
-		}
-
 		if (fm.authors && fm.authors.length > 0 && fm.journal && fm.year) {
 			fm.aliases.push(`${fm.authors[0]}. ${fm.journal}. ${fm.year}`);
 		}
@@ -255,6 +250,20 @@ export async function updateFrontMatter(
 				if (settings.includeBbtCollections && dup['collections'] !== undefined && getStrategy(settings.mergeStrategies, 'collections') === 'merge') {
 					fm.collections = mergeValues(fm.collections, dup['collections']);
 				}
+			}
+		}
+
+		// Created date goes first: rebuild the frontmatter so it leads, which
+		// also moves it up on notes where an earlier version appended it last
+		if (createdProperty) {
+			const created = existingCreated ?? formatLocalDate(targetFile.stat.ctime);
+			const rest = Object.entries(fm).filter(([key]) => key !== createdProperty);
+			for (const key of Object.keys(fm)) {
+				delete fm[key];
+			}
+			fm[createdProperty] = created;
+			for (const [key, value] of rest) {
+				fm[key] = value;
 			}
 		}
 	});
